@@ -63,6 +63,7 @@
         .date-range-container { display: flex; align-items: center; gap: 10px; }
         
         .btn-main { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+        .btn-main:disabled { opacity: 0.7; cursor: wait; }
         .btn-cancel { background: var(--danger); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
         .btn-reset { background: #ffffff; color: var(--danger); border: 1px solid #f5c6cb; padding: 12px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
         .btn-reset:hover { background: #f8d7da; }
@@ -94,6 +95,9 @@
 
         .action-btn { background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px; transition: transform 0.1s;}
         .action-btn:hover { transform: scale(1.2); }
+        .save-feedback { display: none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-weight: 600; font-size: 0.92em; }
+        .save-feedback.success { display: block; background: #edf7ed; color: #1f7a3f; border: 1px solid #c8e6c9; }
+        .save-feedback.error { display: block; background: #fdecec; color: #b42318; border: 1px solid #f3c7c3; }
         
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); overflow-y: auto; }
         .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 12px; width: 80%; max-width: 1000px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
@@ -208,6 +212,7 @@
                     </label>
                 </div>
             </div>
+            <div id="saveFeedback" class="save-feedback"></div>
 
             <div id="anteilContainer" style="display: none; gap: 30px; margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; align-items: center;">
                 <div class="form-group" id="groupAnteilIntern" style="display: none; min-width: 180px;">
@@ -284,7 +289,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th class="sortable" onclick="sortiere('datum_eingabe')">Datum <span id="sort_datum_eingabe" class="sort-icon"></span></th>
+                            <th class="sortable" onclick="sortiere('erstellt_am')">Erfasst am <span id="sort_erstellt_am" class="sort-icon"></span></th>
+                            <th class="sortable" onclick="sortiere('datum_eingabe')">Buchungsdatum <span id="sort_datum_eingabe" class="sort-icon"></span></th>
                             <th class="sortable" onclick="sortiere('objekt')">Objekt <span id="sort_objekt" class="sort-icon"></span></th>
                             <th class="sortable" onclick="sortiere('text')">Text / Bemerkung <span id="sort_text" class="sort-icon"></span></th>
                             <th class="sortable" onclick="sortiere('soll')">Soll <span id="sort_soll" class="sort-icon"></span></th>
@@ -448,7 +454,7 @@
 
         let lokaleBuchungen = [];
         let lokaleEB = []; 
-        let aktuelleSortierung = { spalte: 'datum_eingabe', richtung: 'desc' };
+        let aktuelleSortierung = { spalte: 'erstellt_am', richtung: 'desc' };
         let bearbeitungsModusId = null;
         let istAbschlussAnsicht = false;
 
@@ -568,6 +574,32 @@
 
         function formatCHF(r) { return (r / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 }); }
         function formatDatumCH(d) { if(!d) return '-'; const p = d.split('-'); return `${p[2]}.${p[1]}.${p[0]}`; }
+        function formatDateTimeCH(ts) {
+            if (!ts) return '-';
+            const dateObj = typeof ts?.toDate === 'function' ? ts.toDate() : new Date(ts);
+            if (isNaN(dateObj.getTime())) return '-';
+            return dateObj.toLocaleString('de-CH', { dateStyle: 'short', timeStyle: 'short' });
+        }
+        function getSortValue(eintrag, feld) {
+            if (feld === 'betrag') return Number(eintrag.betrag || 0);
+            if (feld === 'erstellt_am') {
+                if (eintrag.erstellt_am && typeof eintrag.erstellt_am.toMillis === 'function') return eintrag.erstellt_am.toMillis();
+                // Fallback für ältere Buchungen ohne Erfassungsdatum
+                const fallback = eintrag.datum_eingabe ? `${eintrag.datum_eingabe}T00:00:00` : '';
+                const ms = fallback ? new Date(fallback).getTime() : 0;
+                return Number.isNaN(ms) ? 0 : ms;
+            }
+            return (eintrag[feld] || '').toString().toLowerCase();
+        }
+        function zeigeSaveFeedback(text, typ = 'success') {
+            const el = document.getElementById('saveFeedback');
+            el.textContent = text;
+            el.className = `save-feedback ${typ}`;
+            window.setTimeout(() => {
+                el.className = 'save-feedback';
+                el.textContent = '';
+            }, 3000);
+        }
         function escapeHtml(text) {
             return String(text ?? '')
                 .replaceAll('&', '&amp;')
@@ -654,6 +686,7 @@
         }
 
         document.getElementById('btnBuchen').onclick = async () => {
+            const btn = document.getElementById('btnBuchen');
             const d = document.getElementById('datum').value;
             const t = document.getElementById('text').value;
             const b = document.getElementById('betrag').value;
@@ -677,12 +710,25 @@
                 anteil_privat: anteilPrivatVal ? Math.round(parseFloat(anteilPrivatVal) * 100) : 0
             };
             
-            if(bearbeitungsModusId) {
-                await updateDoc(doc(db, "buchungen", bearbeitungsModusId), data);
-            } else {
-                await addDoc(collection(db, "buchungen"), { ...data, erstellt_am: serverTimestamp() });
+            btn.disabled = true;
+            btn.textContent = 'Speichert...';
+
+            try {
+                if(bearbeitungsModusId) {
+                    await updateDoc(doc(db, "buchungen", bearbeitungsModusId), data);
+                    zeigeSaveFeedback('✅ Buchung wurde erfolgreich aktualisiert.');
+                } else {
+                    await addDoc(collection(db, "buchungen"), { ...data, erstellt_am: serverTimestamp() });
+                    zeigeSaveFeedback('✅ Buchung wurde erfolgreich gespeichert.');
+                }
+                resetForm();
+            } catch (error) {
+                console.error(error);
+                zeigeSaveFeedback('❌ Buchung konnte nicht gespeichert werden. Bitte erneut versuchen.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Buchung speichern';
             }
-            resetForm();
         };
 
         function resetForm() {
@@ -812,8 +858,8 @@
             if(fKonto !== 'Alle') datenJournal = datenJournal.filter(b => b.soll === fKonto || b.haben === fKonto);
             
             datenJournal.sort((a,b) => {
-                let wA = a[aktuelleSortierung.spalte] || '', wB = b[aktuelleSortierung.spalte] || '';
-                if(aktuelleSortierung.spalte === 'betrag') { wA = Number(wA); wB = Number(wB); } else { wA = wA.toString().toLowerCase(); wB = wB.toString().toLowerCase(); }
+                const wA = getSortValue(a, aktuelleSortierung.spalte);
+                const wB = getSortValue(b, aktuelleSortierung.spalte);
                 if(wA < wB) return aktuelleSortierung.richtung === 'asc' ? -1 : 1;
                 if(wA > wB) return aktuelleSortierung.richtung === 'asc' ? 1 : -1;
                 return 0;
@@ -827,7 +873,7 @@
 
         function renderJournal(daten) {
             const body = document.getElementById('journalBody'); body.innerHTML = '';
-            if(daten.length === 0) { body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">Keine Buchungen gefunden.</td></tr>'; return; }
+            if(daten.length === 0) { body.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">Keine Buchungen gefunden.</td></tr>'; return; }
             
             daten.forEach(b => {
                 let trClass = '';
@@ -848,6 +894,7 @@
                 }
 
                 body.innerHTML += `<tr ${trClass}>
+                    <td>${formatDateTimeCH(b.erstellt_am)}</td>
                     <td>${formatDatumCH(b.datum_eingabe)}</td>
                     <td>${escapeHtml(b.objekt)}</td>
                     <td>${displayTxt}${iconStr}</td>
