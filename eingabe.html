@@ -690,9 +690,15 @@
             const d = document.getElementById('datum').value;
             const t = document.getElementById('text').value;
             const b = document.getElementById('betrag').value;
-            
+            const sollKonto = document.getElementById('sollKonto').value;
+            const habenKonto = document.getElementById('habenKonto').value;
+
             if(!d || !t || !b) return alert("Daten fehlen!");
-            
+            if(sollKonto === habenKonto) {
+                zeigeSaveFeedback("❌ Soll- und Haben-Konto dürfen nicht identisch sein.", "error");
+                return;
+            }
+
             const anteilInternVal = document.getElementById('anteilIntern').value;
             const anteilPrivatVal = document.getElementById('anteilPrivat').value;
 
@@ -701,8 +707,8 @@
                 objekt: document.getElementById('objekt').value, 
                 text: t, 
                 betrag: Math.round(parseFloat(b) * 100), 
-                soll: document.getElementById('sollKonto').value, 
-                haben: document.getElementById('habenKonto').value, 
+                soll: sollKonto,
+                haben: habenKonto,
                 intern_only: document.getElementById('nurIntern').checked,
                 privat: document.getElementById('privat').checked,
                 nachverfolgung: document.getElementById('nachverfolgung').checked,
