@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - CreArt Buchhaltung</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; --card-bg: #ffffff; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #333; }
+        .login-card { background: var(--card-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h1 { color: var(--primary); margin-top: 0; margin-bottom: 25px; }
+        .form-group { display: flex; flex-direction: column; text-align: left; margin-bottom: 20px; }
+        label { font-weight: bold; font-size: 0.9em; margin-bottom: 5px; color: #555; }
+        input[type="email"], input[type="password"] { padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 1em; }
+        
+        /* Checkbox Styling */
+        .checkbox-group { display: flex; align-items: center; gap: 8px; text-align: left; margin-bottom: 20px; cursor: pointer; }
+        .checkbox-group input { cursor: pointer; transform: scale(1.2); }
+        .checkbox-group label { font-weight: normal; margin: 0; cursor: pointer; color: #555; }
+
+        button { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1.1em; transition: 0.3s; }
+        button:hover { background: #219653; }
+        #errorMessage { color: #e74c3c; font-weight: bold; margin-top: 15px; display: none; font-size: 0.9em; }
+        /* ==========================================================================
+           📱 MOBILE OPTIMIERUNG (Nur für Bildschirme < 768px)
+           ========================================================================== */
+        @media (max-width: 768px) {
+            /* Globale Anpassungen (Abstände verringern um Platz zu sparen) */
+            body { padding: 10px; }
+            .card, .collapsible-body, .modal-content, .admin-controls, .login-card { padding: 15px; }
+            .modal-content { width: 92%; margin: 10% auto; padding: 20px; }
+            
+            /* Header & Navigation flexibel stapeln */
+            .app-header, header { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; }
+            .header-controls { flex-direction: column; width: 100%; gap: 10px; }
+            .btn-switch, .btn-toggle-view { width: 100%; text-align: center; box-sizing: border-box; }
+            
+            /* Tabs horizontal scrollbar machen anstatt sie unschön umzubrechen */
+            .nav-tabs { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: none; padding-bottom: 5px; gap: 8px;}
+            .tab-btn { white-space: nowrap; flex-shrink: 0; font-size: 0.95em; padding: 12px 18px; border-radius: 8px; margin: 0; border: 1px solid #ddd; }
+            .tab-btn.active { border: 2px solid var(--primary); }
+            
+            /* Formular-Grid auflösen -> Alles untereinander anordnen */
+            .form-grid { display: flex !important; flex-direction: column; gap: 15px; }
+            .form-group, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-12 { width: 100%; }
+            
+            /* Filter-Leisten & Suchfelder anpassen */
+            .global-filter-bar, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; gap: 15px; }
+            .filter-inline, .date-range-container { flex-direction: column; align-items: stretch; width: 100%; gap: 10px;}
+            .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
+            .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
+            
+            /* Buttons auf volle Breite ziehen (Daumen-freundlich) */
+            .btn-main, .btn-cancel, .btn-reset, .btn-secondary, .event-form-actions button { width: 100% !important; margin-bottom: 5px; box-sizing: border-box; }
+            .event-form-actions { flex-direction: column; width: 100%; gap: 10px; }
+            
+            /* Report-Grids (ER / Bilanz) & Admin Diffs untereinander */
+            .report-grid, .diff-grid { grid-template-columns: 1fr; gap: 30px; }
+            .fw-summary-dashboard { grid-template-columns: 1fr; }
+            .kontenplan-grid { grid-template-columns: 1fr; gap: 15px; }
+            
+            /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
+            .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
+            
+            /* Admin-Tool spezifisch */
+            .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
+            .filter-row .filter-btn { width: 100%; text-align: center; }
+            
+            /* Login spezifisch */
+            .checkbox-group { align-items: flex-start; }
+            .checkbox-group input { margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card" id="loginUI" style="opacity: 0; transition: opacity 0.3s;">
+        <h1>CreArt Buchhaltung</h1>
+        <div class="form-group">
+            <label>E-Mail Adresse</label>
+            <input type="email" id="email" placeholder="name@domain.ch" required>
+        </div>
+        <div class="form-group">
+            <label>Passwort</label>
+            <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+        
+        <label class="checkbox-group">
+            <input type="checkbox" id="rememberMe" checked>
+            <span>Auf diesem Gerät angemeldet bleiben</span>
+        </label>
+
+        <button id="btnLogin">Einloggen</button>
+        <div id="errorMessage">Zugangsdaten falsch.</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        // NEU: setPersistence und die zwei Speichertypen importiert
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4TnJ2SHBPwaB2E_NS_SYE0jZM2yZTjTs",
+            authDomain: "buchhaltung-9c1c9.firebaseapp.com",
+            projectId: "buchhaltung-9c1c9",
+            storageBucket: "buchhaltung-9c1c9.firebasestorage.app",
+            messagingSenderId: "401277655088",
+            appId: "1:401277655088:web:0ed07c93e335524ffe35f5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // --- DER AUTO-REDIRECT ---
+        // Prüft sofort beim Laden, ob du schon eingeloggt bist
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Du bist schon bekannt -> ab zur App!
+                window.location.href = "eingabe.html";
+            } else {
+                // Niemand eingeloggt -> Formular sichtbar machen
+                document.getElementById('loginUI').style.opacity = '1';
+            }
+        });
+
+        // --- DAS LOGIN ---
+        document.getElementById('btnLogin').addEventListener('click', () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            const btn = document.getElementById('btnLogin');
+            const errorDiv = document.getElementById('errorMessage');
+
+            if(!email || !password) {
+                errorDiv.innerText = "Bitte E-Mail und Passwort eingeben.";
+                errorDiv.style.display = "block";
+                return;
+            }
+
+            btn.innerText = "Prüfe Daten...";
+            btn.disabled = true;
+            errorDiv.style.display = "none";
+
+            // 1. Speichermethode festlegen (Dauerhaft vs. Nur für diese Sitzung)
+            const speicherArt = rememberMe ? browserLocalPersistence : browserSessionPersistence;
+
+            setPersistence(auth, speicherArt)
+                .then(() => {
+                    // 2. Einloggen
+                    return signInWithEmailAndPassword(auth, email, password);
+                })
+                .then(() => {
+                    // Erfolg (wird durch onAuthStateChanged oben automatisch weitergeleitet)
+                })
+                .catch((error) => {
+                    btn.innerText = "Einloggen";
+                    btn.disabled = false;
+                    errorDiv.innerText = "Zugangsdaten ungültig oder Nutzer existiert nicht.";
+                    errorDiv.style.display = "block";
+                    console.error(error.message);
+                });
+        });
+
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') document.getElementById('btnLogin').click();
+        });
+    </script>
+</body>
+</html>

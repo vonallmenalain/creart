@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Admin-Tool | Audit Log</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1 { color: var(--primary); margin: 0; font-size: 1.5rem; }
+        
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-back { background: var(--primary); color: white; }
+        .btn-undo { background: var(--accent); color: white; font-size: 0.85em; }
+        .btn-undo:hover { background: #2980b9; }
+
+        /* Filter-Sektion */
+        .admin-controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .filter-label { font-weight: bold; font-size: 0.9em; min-width: 120px; }
+        
+        .filter-btn { padding: 8px 15px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; font-size: 0.85em; transition: 0.2s; font-weight: 600; background: #fff; color: #666; }
+        
+        /* Permanente Farben für die Filter-Buttons (passend zu Badges) */
+        .filter-btn[data-filter="all"] { background: #f8f9fa; color: #333; }
+        .filter-btn[data-filter="all"].active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        .filter-btn[data-filter="buchungen"] { background: #e3f2fd; color: #1565c0; border-color: #bbdefb; }
+        .filter-btn[data-filter="buchungen"].active { background: #1565c0; color: white; }
+        
+        .filter-btn[data-filter="debitoren"] { background: #f3e5f5; color: #7b1fa2; border-color: #e1bee7; }
+        .filter-btn[data-filter="debitoren"].active { background: #7b1fa2; color: white; }
+        
+        .filter-btn[data-filter="kunden_adressen"] { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
+        .filter-btn[data-filter="kunden_adressen"].active { background: #2e7d32; color: white; }
+        
+        .filter-btn[data-filter="ferienwohnung_buchungen"] { background: #fff8e1; color: #f57f17; border-color: #ffecb3; }
+        .filter-btn[data-filter="ferienwohnung_buchungen"].active { background: #f57f17; color: white; }
+        
+        .filter-btn[data-filter="verkaeufe_events"] { background: #fbe9e7; color: #d84315; border-color: #ffccbc; }
+        .filter-btn[data-filter="verkaeufe_events"].active { background: #d84315; color: white; }
+        
+        .filter-btn[data-filter="eroeffnungsbilanz"] { background: #eceff1; color: #455a64; border-color: #cfd8dc; }
+        .filter-btn[data-filter="eroeffnungsbilanz"].active { background: #455a64; color: white; }
+
+        .date-input { padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; }
+
+        /* Log-Tabelle */
+        .log-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 14px 15px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+        th { background: #f8f9fa; color: var(--primary); font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+        
+        .main-row { cursor: pointer; transition: 0.2s; }
+        .main-row:hover { background-color: #f8fafc; }
+        
+        /* Aufklappbarer Detail-Bereich */
+        .details-row { display: none; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        .details-row.open { display: table-row; }
+        .details-container { padding: 20px; }
+        .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .data-box { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .data-box h4 { margin: 0 0 12px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; display: flex; justify-content: space-between; }
+        
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        .data-table td { padding: 6px 8px; border-bottom: 1px solid #f8fafc; }
+        .data-table td:first-child { font-weight: 600; color: #475569; width: 40%; text-transform: capitalize; }
+        
+        .toggle-icon { display: inline-block; transition: transform 0.3s; color: #94a3b8; font-size: 0.8em; margin-left: 10px; }
+        .main-row.open .toggle-icon { transform: rotate(180deg); }
+
+        .badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
+        .col-buchungen { background: #e3f2fd; color: #1565c0; }
+        .col-debitoren { background: #f3e5f5; color: #7b1fa2; }
+        .col-adressen { background: #e8f5e9; color: #2e7d32; }
+        .col-fw { background: #fff8e1; color: #f57f17; }
+        .col-events { background: #fbe9e7; color: #d84315; }
+        .col-eb { background: #eceff1; color: #455a64; }
+        
+        .act-create { background: #d4edda; color: #155724; }
+        .act-update { background: #fff3cd; color: #856404; }
+        .act-delete { background: #f8d7da; color: #721c24; }
+        /* ==========================================================================
+           📱 MOBILE OPTIMIERUNG (Nur für Bildschirme < 768px)
+           ========================================================================== */
+        @media (max-width: 768px) {
+            /* Globale Anpassungen (Abstände verringern um Platz zu sparen) */
+            body { padding: 10px; }
+            .card, .collapsible-body, .modal-content, .admin-controls, .login-card { padding: 15px; }
+            .modal-content { width: 92%; margin: 10% auto; padding: 20px; }
+            
+            /* Header & Navigation flexibel stapeln */
+            .app-header, header { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; }
+            .header-controls { flex-direction: column; width: 100%; gap: 10px; }
+            .btn-switch, .btn-toggle-view { width: 100%; text-align: center; box-sizing: border-box; }
+            
+            /* Tabs horizontal scrollbar machen anstatt sie unschön umzubrechen */
+            .nav-tabs { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: none; padding-bottom: 5px; gap: 8px;}
+            .tab-btn { white-space: nowrap; flex-shrink: 0; font-size: 0.95em; padding: 12px 18px; border-radius: 8px; margin: 0; border: 1px solid #ddd; }
+            .tab-btn.active { border: 2px solid var(--primary); }
+            
+            /* Formular-Grid auflösen -> Alles untereinander anordnen */
+            .form-grid { display: flex !important; flex-direction: column; gap: 15px; }
+            .form-group, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-12 { width: 100%; }
+            
+            /* Filter-Leisten & Suchfelder anpassen */
+            .global-filter-bar, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; gap: 15px; }
+            .filter-inline, .date-range-container { flex-direction: column; align-items: stretch; width: 100%; gap: 10px;}
+            .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
+            .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
+            
+            /* Buttons auf volle Breite ziehen (Daumen-freundlich) */
+            .btn-main, .btn-cancel, .btn-reset, .btn-secondary, .event-form-actions button { width: 100% !important; margin-bottom: 5px; box-sizing: border-box; }
+            .event-form-actions { flex-direction: column; width: 100%; gap: 10px; }
+            
+            /* Report-Grids (ER / Bilanz) & Admin Diffs untereinander */
+            .report-grid, .diff-grid { grid-template-columns: 1fr; gap: 30px; }
+            .fw-summary-dashboard { grid-template-columns: 1fr; }
+            .kontenplan-grid { grid-template-columns: 1fr; gap: 15px; }
+            
+            /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
+            .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
+            
+            /* Admin-Tool spezifisch */
+            .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
+            .filter-row .filter-btn { width: 100%; text-align: center; }
+            
+            /* Login spezifisch */
+            .checkbox-group { align-items: flex-start; }
+            .checkbox-group input { margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>🛡️ Master Admin-Tool & Log</h1>
+        <a href="eingabe.html" class="btn btn-back">⬅️ Zurück zur App</a>
+    </header>
+
+    <div class="admin-controls">
+        <div class="filter-row">
+            <span class="filter-label">Bereich:</span>
+            <button class="filter-btn active" data-filter="all">Alle</button>
+            <button class="filter-btn" data-filter="buchungen">Journal</button>
+            <button class="filter-btn" data-filter="debitoren">Debitoren</button>
+            <button class="filter-btn" data-filter="kunden_adressen">Kunden</button>
+            <button class="filter-btn" data-filter="ferienwohnung_buchungen">Ferienwohnung</button>
+            <button class="filter-btn" data-filter="verkaeufe_events">Events</button>
+            <button class="filter-btn" data-filter="eroeffnungsbilanz">Eröffnungsbilanz</button>
+        </div>
+        <div class="filter-row">
+            <span class="filter-label">Zeitraum:</span>
+            <input type="date" id="dateVon" class="date-input">
+            <span>bis</span>
+            <input type="date" id="dateBis" class="date-input">
+            <button class="filter-btn" onclick="window.resetDates()" style="background: #f1f5f9; color: #64748b;">Datum zurücksetzen</button>
+        </div>
+    </div>
+
+    <div class="log-card">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 160px;">Datum / Zeit</th>
+                    <th style="width: 140px;">Bereich</th>
+                    <th style="width: 100px;">Aktion</th>
+                    <th>Kurz-Info (Klick für Details)</th>
+                    <th style="text-align:right; width: 140px;">Aktion</th>
+                </tr>
+            </thead>
+            <tbody id="logBody">
+                <tr><td colspan="5" style="text-align:center; padding: 40px;">Lade Logs...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, getDoc, setDoc, deleteDoc, where, Timestamp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC4TnJ2SHBPwaB2E_NS_SYE0jZM2yZTjTs",
+        authDomain: "buchhaltung-9c1c9.firebaseapp.com",
+        projectId: "buchhaltung-9c1c9",
+        storageBucket: "buchhaltung-9c1c9.firebasestorage.app",
+        messagingSenderId: "401277655088",
+        appId: "1:401277655088:web:0ed07c93e335524ffe35f5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentFilter = "all";
+    let unsubscribeLogs = null;
+
+    onAuthStateChanged(auth, (user) => {
+        if (!user) window.location.href = "index.html";
+        else initApp();
+    });
+
+    function initApp() {
+        document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentFilter = e.target.getAttribute('data-filter');
+                startLogListener();
+            };
+        });
+
+        document.getElementById('dateVon').onchange = startLogListener;
+        document.getElementById('dateBis').onchange = startLogListener;
+        
+        window.resetDates = () => {
+            document.getElementById('dateVon').value = '';
+            document.getElementById('dateBis').value = '';
+            startLogListener();
+        };
+
+        startLogListener();
+    }
+
+    function startLogListener() {
+        if (unsubscribeLogs) unsubscribeLogs();
+        
+        const von = document.getElementById('dateVon').value;
+        const bis = document.getElementById('dateBis').value;
+        
+        let conditions = [orderBy("timestamp", "desc"), limit(100)];
+        
+        if (currentFilter !== "all") {
+            conditions.unshift(where("collection", "==", currentFilter));
+        }
+        
+        if (von) {
+            conditions.unshift(where("timestamp", ">=", Timestamp.fromDate(new Date(von))));
+        }
+        if (bis) {
+            const endOfDay = new Date(bis);
+            endOfDay.setHours(23, 59, 59, 999);
+            conditions.unshift(where("timestamp", "<=", Timestamp.fromDate(endOfDay)));
+        }
+
+        const q = query(collection(db, "audit_logs"), ...conditions);
+        
+        unsubscribeLogs = onSnapshot(q, (snapshot) => {
+            renderTable(snapshot);
+        }, (error) => {
+            console.error("Firestore Error:", error);
+            if (error.message.includes("index")) {
+                alert("Bitte erstelle den erforderlichen Index in der Firebase Console. Ein Link dazu sollte in der Browser-Konsole (F12) stehen.");
+            }
+        });
+    }
+
+    // Hilfsfunktion: Formatiert Rappen in CHF
+    function formatVal(key, val) {
+        if(val === null || val === undefined) return '-';
+        if(key.includes('rappen') || key === 'betrag') return `CHF ${(val/100).toFixed(2)}`;
+        if(key.includes('datum') || key === 'erstellt_am' || key === 'aktualisiert_am') {
+            if(val.seconds) return new Date(val.seconds*1000).toLocaleString('de-CH');
+            return val;
+        }
+        if(typeof val === 'boolean') return val ? 'Ja' : 'Nein';
+        if(typeof val === 'object') return JSON.stringify(val); // Für Produkte-Arrays
+        return val;
+    }
+
+    // Erstellt eine schöne HTML-Tabelle aus einem Objekt
+    function renderDataBox(title, dataObj, color) {
+        if(!dataObj) return `<div class="data-box" style="border-top: 3px solid #cbd5e1;"><h4>${title}</h4><i>Keine Daten</i></div>`;
+        
+        let html = `<div class="data-box" style="border-top: 3px solid ${color};">
+                        <h4>${title}</h4>
+                        <table class="data-table">`;
+        
+        // Sortiere Keys alphabetisch für bessere Übersicht, aber halte wichtige oben
+        let keys = Object.keys(dataObj).sort();
+        
+        keys.forEach(key => {
+            html += `<tr><td>${key.replace('_', ' ')}</td><td>${formatVal(key, dataObj[key])}</td></tr>`;
+        });
+        
+        html += `</table></div>`;
+        return html;
+    }
+
+    function renderTable(snapshot) {
+        const tbody = document.getElementById('logBody');
+        tbody.innerHTML = '';
+        
+        if(snapshot.empty) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px;">Keine Einträge gefunden.</td></tr>';
+            return;
+        }
+
+        snapshot.forEach(logDoc => {
+            const log = logDoc.data();
+            const id = logDoc.id;
+            
+            const colLabel = {
+                'buchungen': 'Journal', 'debitoren': 'Debitor', 'kunden_adressen': 'Kunde',
+                'ferienwohnung_buchungen': 'FW', 'verkaeufe_events': 'Event', 'eroeffnungsbilanz': 'EB'
+            }[log.collection] || log.collection;
+
+            const time = log.timestamp?.toDate().toLocaleString('de-CH') || '...';
+            
+            // Kurz-Info Text generieren
+            const d = log.after_data || log.before_data || {};
+            let shortInfo = `<strong>${d.text || d.nachname || d.event_name || d.name || d.accountId || 'Dokument'}</strong>`;
+            if(d.betrag || d.betrag_rappen) shortInfo += ` (CHF ${((d.betrag || d.betrag_rappen)/100).toFixed(2)})`;
+
+            // Haupt-Zeile erstellen
+            const trMain = document.createElement('tr');
+            trMain.className = 'main-row';
+            trMain.onclick = () => window.toggleRow(id);
+            trMain.innerHTML = `
+                <td>${time}</td>
+                <td><span class="badge col-${getShortCol(log.collection)}">${colLabel}</span></td>
+                <td><span class="badge act-${log.action.toLowerCase()}">${log.action}</span></td>
+                <td style="font-size:0.95em;">${shortInfo}</td>
+                <td style="text-align:right;">
+                    <button class="btn btn-undo" onclick="window.doUndo(event, '${id}')">↩️ Undo</button>
+                    <span class="toggle-icon">▼</span>
+                </td>
+            `;
+            
+            // Detail-Zeile erstellen
+            let diffHtml = '';
+            if (log.action === "CREATE") {
+                diffHtml = renderDataBox("Neu erstellte Daten", log.after_data, "#27ae60");
+            } else if (log.action === "DELETE") {
+                diffHtml = renderDataBox("Gelöschte Daten", log.before_data, "#e74c3c");
+            } else if (log.action === "UPDATE") {
+                diffHtml = `
+                    <div class="diff-grid">
+                        ${renderDataBox("Vorher (Alter Zustand)", log.before_data, "#e74c3c")}
+                        ${renderDataBox("Nachher (Neuer Zustand)", log.after_data, "#27ae60")}
+                    </div>`;
+            }
+
+            const trDetails = document.createElement('tr');
+            trDetails.className = 'details-row';
+            trDetails.id = `detail_${id}`;
+            trDetails.innerHTML = `
+                <td colspan="5" class="details-container">
+                    <div style="margin-bottom: 15px; color: #94a3b8; font-family: monospace; font-size: 0.85em;">
+                        Document ID: ${log.documentId} | Log ID: ${id}
+                    </div>
+                    ${diffHtml}
+                </td>
+            `;
+
+            tbody.appendChild(trMain);
+            tbody.appendChild(trDetails);
+        });
+    }
+
+    window.toggleRow = (id) => {
+        const detailRow = document.getElementById(`detail_${id}`);
+        const mainRow = detailRow.previousElementSibling;
+        
+        detailRow.classList.toggle('open');
+        mainRow.classList.toggle('open');
+    };
+
+    function getShortCol(c) {
+        if(c==='kunden_adressen') return 'adressen';
+        if(c==='ferienwohnung_buchungen') return 'fw';
+        if(c==='verkaeufe_events') return 'events';
+        if(c==='eroeffnungsbilanz') return 'eb';
+        return c;
+    }
+
+    window.doUndo = async (event, id) => {
+        event.stopPropagation(); // Verhindert, dass die Zeile beim Klick auf Undo aufklappt
+        
+        if(!confirm("Aktion wirklich rückgängig machen?")) return;
+        
+        try {
+            const snap = await getDoc(doc(db, "audit_logs", id));
+            const log = snap.data();
+            const ref = doc(db, log.collection, log.documentId);
+            
+            if (log.action === "CREATE") {
+                await deleteDoc(ref);
+            } else {
+                await setDoc(ref, log.before_data);
+            }
+            alert("Undo erfolgreich ausgeführt!");
+        } catch (e) { 
+            alert("Fehler beim Undo: " + e.message); 
+        }
+    };
+</script>
+</body>
+</html>

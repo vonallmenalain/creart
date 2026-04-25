@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreArt & Ferienwohnung Buchhaltung</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f39c12; 
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 1500px; margin: 0 auto; padding: 20px; background: var(--bg); color: #333; }
+        
+        .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .app-title { font-size: 1.8em; font-weight: bold; color: var(--primary); margin: 0; display: flex; align-items: center; }
+        .year-select-title { font-size: inherit; font-family: inherit; font-weight: inherit; color: inherit; border: none; background: transparent; cursor: pointer; padding: 0 5px; outline: none; margin-left: 5px; }
+
+        .header-controls { display: flex; gap: 15px; align-items: center; }
+
+        .btn-switch { background: #fff; color: var(--primary); border: 2px solid var(--primary); padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; text-decoration: none; transition: 0.3s; }
+        .btn-switch:hover { background: var(--primary); color: #fff; }
+
+        .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 0; }
+        .tab-btn { padding: 12px 25px; border: none; background: #e0e0e0; cursor: pointer; font-weight: bold; border-radius: 8px 8px 0 0; transition: 0.3s; color: #666; }
+        .tab-btn.active { background: var(--card-bg); color: var(--primary); border: 2px solid #ddd; border-bottom: 2px solid var(--card-bg); margin-bottom: -2px; }
+        .tab-btn:hover:not(.active) { background: #d0d0d0; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #eee; }
+        h2 { margin-top: 0; color: var(--primary); font-size: 1.4em; display: flex; justify-content: space-between; align-items: center; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 15px; margin-bottom: 20px; }
+        .col-2 { grid-column: span 2; }
+        .col-3 { grid-column: span 3; }
+        .col-5 { grid-column: span 5; }
+        .col-7 { grid-column: span 7; }
+
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: 600; font-size: 0.85em; margin-bottom: 6px; color: var(--secondary); }
+        input[type="text"], input[type="number"], input[type="date"], select { padding: 12px; border: 1px solid #ccd1d9; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
+        
+        .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; padding: 10px 15px; border-radius: 6px; border: 1px solid #ddd; transition: 0.2s;}
+        .checkbox-label input { transform: scale(1.3); cursor: pointer; margin: 0;}
+
+        /* Farb-Tags für die Checkboxen */
+        .cb-intern { background: #fff4e6; color: #b95d00; border-color: #ffd8a8; }
+        .cb-privat { background: #edf7ed; color: #1f7a3f; border-color: #c8e6c9; }
+        .cb-nachverfolgung { background: #fdecec; color: #b42318; border-color: #f3c7c3; }
+
+        .global-filter-bar { display: flex; flex-wrap: wrap; gap: 20px; background: #e8f0fe; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d2e3fc; align-items: flex-end;}
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .checkbox-container { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; height: 100%; }
+        .filter-cb-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.95em; }
+        .filter-cb-label input { transform: scale(1.2); cursor: pointer; }
+        .date-range-container { display: flex; align-items: center; gap: 10px; }
+        
+        .btn-main { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
+        .btn-cancel { background: var(--danger); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
+        .btn-reset { background: #ffffff; color: var(--danger); border: 1px solid #f5c6cb; padding: 12px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
+        .btn-reset:hover { background: #f8d7da; }
+        
+        .btn-toggle-view { background: transparent; color: var(--accent); border: 2px solid var(--accent); padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-toggle-view.active { background: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #edf2f7; white-space: nowrap; }
+        th.sortable { background: #f8fafc; font-weight: bold; color: var(--secondary); cursor: pointer; user-select: none; transition: background 0.2s; }
+        th.sortable:hover { background: #e2e6ea; }
+        .sort-icon { font-size: 0.8em; color: #7f8c8d; margin-left: 5px; }
+        .right { text-align: right; }
+        .chf { font-variant-numeric: tabular-nums; font-weight: 500; }
+        .negative { color: var(--danger); }
+        
+        /* Zeilen-Farben im Journal */
+        tr.intern-row td { background-color: #fff4e6; color: #b95d00; }
+        tr.privat-row td { background-color: #edf7ed; color: #1f7a3f; }
+        tr.nachverfolgung-row td { background-color: #fdecec; color: #b42318; }
+        
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: stretch; }
+        .report-column { display: flex; flex-direction: column; height: 100%; }
+        .report-data-table { margin-bottom: auto; }
+        .report-total-table { border-top: 2px solid var(--primary); margin-top: 15px; }
+        .total-row { background: #f1f5f9; font-weight: bold; }
+        .profit-row { color: var(--accent); font-style: italic; }
+
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px; transition: transform 0.1s;}
+        .action-btn:hover { transform: scale(1.2); }
+        
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); overflow-y: auto; }
+        .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 12px; width: 80%; max-width: 1000px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
+        .close-modal { font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa; }
+        .close-modal:hover { color: var(--danger); }
+        .eb-input { width: 100px; text-align: right; border: 1px solid #ddd; border-radius: 4px; padding: 5px; }
+        
+        .kontenplan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .konten-kategorie { margin-bottom: 25px; }
+        .konten-kategorie h3 { border-bottom: 2px solid var(--primary); padding-bottom: 5px; color: var(--primary); }
+        /* ==========================================================================
+           📱 MOBILE OPTIMIERUNG (Nur für Bildschirme < 768px)
+           ========================================================================== */
+        @media (max-width: 768px) {
+            /* Globale Anpassungen (Abstände verringern um Platz zu sparen) */
+            body { padding: 10px; }
+            .card, .collapsible-body, .modal-content, .admin-controls, .login-card { padding: 15px; }
+            .modal-content { width: 92%; margin: 10% auto; padding: 20px; }
+            
+            /* Header & Navigation flexibel stapeln */
+            .app-header, header { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; }
+            .header-controls { flex-direction: column; width: 100%; gap: 10px; }
+            .btn-switch, .btn-toggle-view { width: 100%; text-align: center; box-sizing: border-box; }
+            
+            /* Tabs horizontal scrollbar machen anstatt sie unschön umzubrechen */
+            .nav-tabs { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: none; padding-bottom: 5px; gap: 8px;}
+            .tab-btn { white-space: nowrap; flex-shrink: 0; font-size: 0.95em; padding: 12px 18px; border-radius: 8px; margin: 0; border: 1px solid #ddd; }
+            .tab-btn.active { border: 2px solid var(--primary); }
+            
+            /* Formular-Grid auflösen -> Alles untereinander anordnen */
+            .form-grid { display: flex !important; flex-direction: column; gap: 15px; }
+            .form-group, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-12 { width: 100%; }
+            
+            /* Filter-Leisten & Suchfelder anpassen */
+            .global-filter-bar, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; gap: 15px; }
+            .filter-inline, .date-range-container { flex-direction: column; align-items: stretch; width: 100%; gap: 10px;}
+            .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
+            .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
+            
+            /* Buttons auf volle Breite ziehen (Daumen-freundlich) */
+            .btn-main, .btn-cancel, .btn-reset, .btn-secondary, .event-form-actions button { width: 100% !important; margin-bottom: 5px; box-sizing: border-box; }
+            .event-form-actions { flex-direction: column; width: 100%; gap: 10px; }
+            
+            /* Report-Grids (ER / Bilanz) & Admin Diffs untereinander */
+            .report-grid, .diff-grid { grid-template-columns: 1fr; gap: 30px; }
+            .fw-summary-dashboard { grid-template-columns: 1fr; }
+            .kontenplan-grid { grid-template-columns: 1fr; gap: 15px; }
+            
+            /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
+            .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
+            
+            /* Admin-Tool spezifisch */
+            .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
+            .filter-row .filter-btn { width: 100%; text-align: center; }
+            
+            /* Login spezifisch */
+            .checkbox-group { align-items: flex-start; }
+            .checkbox-group input { margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-header">
+        <h1 class="app-title">Buchhaltung 
+            <select id="selectedYear" class="year-select-title" onchange="changeYear()">
+                <option value="2026" selected>2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+            </select>
+        </h1>
+        <div class="header-controls">
+            <button id="btnAbschlussAnsicht" onclick="toggleAbschlussAnsicht()" class="btn-toggle-view">👁️ Alles anzeigen</button>
+            <a href="verwaltung.html" class="btn-switch">Verwaltung</a>
+            <button class="tab-btn" onclick="logout()" style="color: var(--danger); background: transparent; padding: 0;">Logout</button>
+        </div>
+    </div>
+
+    <nav class="nav-tabs">
+        <button class="tab-btn active" onclick="openTab('journal', event)">Erfassen & Journal</button>
+        <button class="tab-btn" onclick="openTab('er', event)">Erfolgsrechnung</button>
+        <button class="tab-btn" onclick="openTab('bilanz', event)">Bilanz</button>
+        <button class="tab-btn" onclick="openTab('kp', event)">Kontenplan</button>
+    </nav>
+
+    <div id="journal" class="tab-content active">
+        <div class="card" id="eingabeFormular" style="display: none;">
+            <h2 id="formTitel">Neue Buchung erfassen</h2>
+            <div class="form-grid">
+                <div class="form-group col-2"><label>Datum</label><input type="date" id="datum"></div>
+                <div class="form-group col-3"><label>Objekt</label><select id="objekt"></select></div>
+                <div class="form-group col-7"><label>Text</label><input type="text" id="text" placeholder="z.B. Honorar Projekt X"></div>
+                <div class="form-group col-5"><label>Soll-Konto</label><select id="sollKonto"></select></div>
+                <div class="form-group col-5"><label>Haben-Konto</label><select id="habenKonto"></select></div>
+                <div class="form-group col-2"><label>Betrag (CHF)</label><input type="number" id="betrag" step="0.01" placeholder="0.00"></div>
+            </div>
+
+            <div style="display:flex; gap:15px; align-items: center; flex-wrap: wrap; margin-top: 10px;">
+                <button id="btnBuchen" class="btn-main" style="width: auto; padding: 15px 30px;">Buchung speichern</button>
+                <button id="btnAbbrechen" class="btn-cancel" style="width: auto;">Abbrechen</button>
+                
+                <div style="margin-left: auto; display: flex; gap: 10px;">
+                    <label class="checkbox-label cb-intern">
+                        <input type="checkbox" id="nurIntern" onchange="toggleAnteilFields()"> 🔸 Intern
+                    </label>
+                    <label class="checkbox-label cb-privat">
+                        <input type="checkbox" id="privat" onchange="toggleAnteilFields()"> 🟩 Privat
+                    </label>
+                    <label class="checkbox-label cb-nachverfolgung">
+                        <input type="checkbox" id="nachverfolgung"> 🔴 Nachverfolgung
+                    </label>
+                </div>
+            </div>
+
+            <div id="anteilContainer" style="display: none; gap: 30px; margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; align-items: center;">
+                <div class="form-group" id="groupAnteilIntern" style="display: none; min-width: 180px;">
+                    <label>Anteil Intern (CHF)</label>
+                    <input type="number" id="anteilIntern" step="0.01" placeholder="Gesamtbetrag">
+                </div>
+                <div class="form-group" id="groupAnteilPrivat" style="display: none; min-width: 180px;">
+                    <label>Anteil Privat (CHF)</label>
+                    <input type="number" id="anteilPrivat" step="0.01" placeholder="Gesamtbetrag">
+                </div>
+                <div style="font-size: 0.85em; color: #666; flex: 1;">
+                    <b>Info:</b> Trägst du hier einen Teilbetrag ein, wird die Buchung im Journal optisch in zwei Zeilen aufgeteilt. Bleibt das Feld leer, gilt die gesamte Buchung als Intern bzw. Privat.
+                </div>
+            </div>
+
+        </div>
+
+        <div id="filterPlaceholderJournal">
+            <div class="global-filter-bar" id="globalFilterBar" style="display: none;">
+                <div class="filter-group">
+                    <label><strong>Zeige Objekte:</strong></label>
+                    <div class="checkbox-container">
+                        <div id="objektCheckboxes" style="display: flex; gap: 15px; flex-wrap: wrap;"></div>
+                        
+                        <div id="filterJournalOptions" style="display: flex; gap: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px;">
+                            <label class="filter-cb-label" style="color: #b95d00; font-weight: bold;">
+                                <input type="checkbox" id="jFiltIntern" onchange="wendeFilterAn()"> Intern
+                            </label>
+                            <label class="filter-cb-label" style="color: #1f7a3f; font-weight: bold;">
+                                <input type="checkbox" id="jFiltPrivat" onchange="wendeFilterAn()"> Privat
+                            </label>
+                            <label class="filter-cb-label" style="color: #b42318; font-weight: bold;">
+                                <input type="checkbox" id="jFiltNach" onchange="wendeFilterAn()"> Nachverfolg.
+                            </label>
+                        </div>
+
+                        <div id="filterReportOptions" style="display: none; gap: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px;">
+                            <label class="filter-cb-label" style="color: #b95d00; font-weight: bold;">
+                                <input type="checkbox" id="rFiltIntern" checked onchange="wendeFilterAn()"> Inkl. Intern
+                            </label>
+                            <label class="filter-cb-label" style="color: #1f7a3f; font-weight: bold;">
+                                <input type="checkbox" id="rFiltPrivat" checked onchange="wendeFilterAn()"> Inkl. Privat
+                            </label>
+                            <label class="filter-cb-label" style="color: #b42318; font-weight: bold;">
+                                <input type="checkbox" id="rFiltNach" checked onchange="wendeFilterAn()"> Inkl. Nachverfolg.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-group" id="kontoFilterContainer">
+                    <label><strong>Konto filtern:</strong></label>
+                    <select id="filterKonto" onchange="wendeFilterAn()" style="padding: 10px; max-width: 220px; text-overflow: ellipsis;"></select>
+                </div>
+                
+                <div class="filter-group">
+                    <label><strong>Zeitraum:</strong></label>
+                    <div class="date-range-container">
+                        <input type="date" id="filterDatumVon" onchange="wendeFilterAn()"> 
+                        <span>bis</span> 
+                        <input type="date" id="filterDatumBis" onchange="wendeFilterAn()">
+                    </div>
+                </div>
+                
+                <div class="filter-group" style="margin-left: auto;">
+                    <button onclick="filterLoeschen()" class="btn-reset">✖ Filter löschen</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Journal <span id="loadingJournal" style="font-size: 0.6em; font-weight: normal;">Lade Daten...</span></h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortiere('datum_eingabe')">Datum <span id="sort_datum_eingabe" class="sort-icon"></span></th>
+                            <th class="sortable" onclick="sortiere('objekt')">Objekt <span id="sort_objekt" class="sort-icon"></span></th>
+                            <th class="sortable" onclick="sortiere('text')">Text / Bemerkung <span id="sort_text" class="sort-icon"></span></th>
+                            <th class="sortable" onclick="sortiere('soll')">Soll <span id="sort_soll" class="sort-icon"></span></th>
+                            <th class="sortable" onclick="sortiere('haben')">Haben <span id="sort_haben" class="sort-icon"></span></th>
+                            <th class="sortable right" onclick="sortiere('betrag')">Betrag (CHF) <span id="sort_betrag" class="sort-icon"></span></th>
+                            <th style="text-align:center">Aktion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="journalBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="er" class="tab-content">
+        <div id="filterPlaceholderEr"></div>
+        <div class="card">
+            <h2>Erfolgsrechnung (ER)</h2>
+            <div class="report-grid">
+                <div class="report-column">
+                    <h3>Ertrag</h3>
+                    <table class="report-data-table"><tbody id="erErtragBody"></tbody></table>
+                    <table class="report-total-table"><tfoot><tr class="total-row"><td>Total Ertrag</td><td class="right chf" id="totalErtrag">0.00</td></tr></tfoot></table>
+                </div>
+                <div class="report-column">
+                    <h3>Aufwand</h3>
+                    <table class="report-data-table"><tbody id="erAufwandBody"></tbody></table>
+                    <table class="report-total-table"><tfoot><tr class="total-row"><td>Total Aufwand</td><td class="right chf" id="totalAufwand">0.00</td></tr></tfoot></table>
+                </div>
+            </div>
+            <div class="card" style="margin-top:30px; background: #f8fafc;">
+                <h3 id="erErgebnisTitel">Unternehmensergebnis</h3>
+                <div style="font-size: 1.5em; font-weight: bold;" id="erErgebnisWert" class="chf">CHF 0.00</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bilanz" class="tab-content">
+        <div id="filterPlaceholderBilanz"></div>
+        <div class="card">
+            <h2>Bilanz <button class="btn-toggle-view" onclick="openEBModal()" style="font-size: 0.65em; padding: 5px 12px;">⚙️ Eröffnungsbilanz</button></h2>
+            <div class="report-grid">
+                <div class="report-column">
+                    <h3>Aktiven</h3>
+                    <table class="report-data-table"><tbody id="bilanzAktivenBody"></tbody></table>
+                    <table class="report-total-table"><tfoot><tr class="total-row"><td>Total Aktiven</td><td class="right chf" id="totalAktiven">0.00</td></tr></tfoot></table>
+                </div>
+                <div class="report-column">
+                    <h3>Passiven & Eigenkapital</h3>
+                    <table class="report-data-table">
+                        <tbody id="bilanzPassivenBody"></tbody>
+                        <tbody id="bilanzGewinnBody"></tbody> 
+                    </table>
+                    <table class="report-total-table"><tfoot><tr class="total-row"><td>Total Passiven</td><td class="right chf" id="totalPassiven">0.00</td></tr></tfoot></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="kp" class="tab-content">
+        <div class="card">
+            <h2>Kontenplan Übersicht</h2>
+            <div class="kontenplan-grid" id="kontenplanOverview"></div>
+        </div>
+    </div>
+
+    <div id="ebModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="margin:0;">Eröffnungsbilanz (Startsalden)</h2>
+                <span class="close-modal" onclick="closeEBModal()">&times;</span>
+            </div>
+            <p style="font-size: 0.9em; color: #666; margin-bottom: 20px;">Nur Bilanzkonten. Werte werden beim Verlassen des Feldes automatisch gespeichert.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Konto</th>
+                            <th class="right">Creart (CHF)</th>
+                            <th class="right">Photographic (CHF)</th>
+                            <th class="right">Ferienwohnung (CHF)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ebBody"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button class="btn-main" onclick="closeEBModal()" style="width:auto; padding: 10px 30px;">Fertig & Schliessen</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4TnJ2SHBPwaB2E_NS_SYE0jZM2yZTjTs",
+            authDomain: "buchhaltung-9c1c9.firebaseapp.com",
+            projectId: "buchhaltung-9c1c9",
+            storageBucket: "buchhaltung-9c1c9.firebasestorage.app",
+            messagingSenderId: "401277655088",
+            appId: "1:401277655088:web:0ed07c93e335524ffe35f5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('eingabeFormular').style.display = 'block';
+                document.getElementById('globalFilterBar').style.display = 'flex';
+                init(); 
+                ladeDaten();
+            } else {
+                window.location.href = "index.html";
+            }
+        });
+
+        window.logout = () => signOut(auth);
+
+        const objekte = ["Creart", "Photographic", "Ferienwohnung"];
+        
+        const kontenplan = [
+            { id: "1000", name: "Kasse", typ: "Aktiv" },
+            { id: "1020", name: "Bankkonto", typ: "Aktiv" },
+            { id: "1030", name: "Bankkonto Privat", typ: "Aktiv" },
+            { id: "1100", name: "Debitoren", typ: "Aktiv" },
+            { id: "1300", name: "Transitorische Aktiven", typ: "Aktiv" },
+            { id: "1500", name: "Inventar", typ: "Aktiv" },
+            { id: "1530", name: "Fahrzeuge", typ: "Aktiv" },
+            { id: "1550", name: "Mobiliar", typ: "Aktiv" },
+            
+            { id: "2000", name: "Privat", typ: "Passiv" },
+            { id: "2100", name: "Hypothek", typ: "Passiv" },
+            { id: "2300", name: "Transitorische Passiven", typ: "Passiv" },
+            
+            { id: "3000", name: "Mieteinnahmen", typ: "Ertrag" },
+            { id: "3100", name: "Kaution", typ: "Ertrag" },
+            { id: "3200", name: "Verkaufserlöse", typ: "Ertrag" },
+            { id: "3400", name: "Sonstiger Ertrag", typ: "Ertrag" },
+            
+            { id: "4000", name: "Waren, Material, Anschaffungen", typ: "Aufwand" },
+            { id: "5000", name: "Personalaufwand", typ: "Aufwand" },
+            { id: "5050", name: "AHV", typ: "Aufwand" },
+            { id: "6000", name: "Strom", typ: "Aufwand" },
+            { id: "6050", name: "Mietaufwand", typ: "Aufwand" },
+            { id: "6100", name: "Unterhalt, Reparaturen", typ: "Aufwand" },
+            { id: "6200", name: "Verpflegung", typ: "Aufwand" },
+            { id: "6250", name: "Fahrzeug, Transport", typ: "Aufwand" },
+            { id: "6300", name: "Werbeaufwand", typ: "Aufwand" },
+            { id: "6400", name: "Dienstleistungen und Gebühren", typ: "Aufwand" },
+            { id: "6500", name: "Kurtaxen", typ: "Aufwand" },
+            { id: "6600", name: "Provisionen", typ: "Aufwand" },
+            { id: "6700", name: "Zinsaufwand", typ: "Aufwand" },
+            { id: "6800", name: "Abschreibungsaufwand", typ: "Aufwand" },
+            { id: "6900", name: "Sonstiger Aufwand", typ: "Aufwand" }
+        ];
+
+        let lokaleBuchungen = [];
+        let lokaleEB = []; 
+        let aktuelleSortierung = { spalte: 'datum_eingabe', richtung: 'desc' };
+        let bearbeitungsModusId = null;
+        let istAbschlussAnsicht = false;
+
+        let unsubscribeBuchungen = null;
+        let unsubscribeEB = null;
+
+        window.toggleAbschlussAnsicht = () => {
+            istAbschlussAnsicht = !istAbschlussAnsicht;
+            const btn = document.getElementById('btnAbschlussAnsicht');
+            btn.innerHTML = istAbschlussAnsicht ? '🔒 Abschluss Ansicht aktiv' : '👁️ Alles anzeigen';
+            btn.classList.toggle('active', istAbschlussAnsicht);
+            
+            document.getElementById('rFiltIntern').checked = !istAbschlussAnsicht;
+            wendeFilterAn();
+        };
+
+        window.changeYear = () => {
+            const year = document.getElementById('selectedYear').value;
+            updateYearConstraints(year);
+            ladeDaten(); 
+        };
+
+        window.toggleAnteilFields = () => {
+            const isIntern = document.getElementById('nurIntern').checked;
+            const isPrivat = document.getElementById('privat').checked;
+            
+            const container = document.getElementById('anteilContainer');
+            const gIntern = document.getElementById('groupAnteilIntern');
+            const gPrivat = document.getElementById('groupAnteilPrivat');
+            
+            container.style.display = (isIntern || isPrivat) ? 'flex' : 'none';
+            gIntern.style.display = isIntern ? 'block' : 'none';
+            gPrivat.style.display = isPrivat ? 'block' : 'none';
+            
+            if(!isIntern) document.getElementById('anteilIntern').value = '';
+            if(!isPrivat) document.getElementById('anteilPrivat').value = '';
+        };
+
+        function updateYearConstraints(year) {
+            const start = `${year}-01-01`, end = `${year}-12-31`;
+            document.getElementById('datum').min = start; document.getElementById('datum').max = end; document.getElementById('datum').value = start;
+            document.getElementById('filterDatumVon').min = start; document.getElementById('filterDatumVon').max = end; document.getElementById('filterDatumVon').value = start;
+            document.getElementById('filterDatumBis').min = start; document.getElementById('filterDatumBis').max = end; document.getElementById('filterDatumBis').value = end;
+        }
+
+        window.openTab = function(tabId, ev) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            ev?.currentTarget.classList.add('active');
+
+            const filterBar = document.getElementById('globalFilterBar');
+            const kFilter = document.getElementById('kontoFilterContainer');
+            const fJournalOpts = document.getElementById('filterJournalOptions');
+            const fReportOpts = document.getElementById('filterReportOptions');
+            
+            if(tabId === 'journal') {
+                document.getElementById('filterPlaceholderJournal').appendChild(filterBar);
+                kFilter.style.display = 'flex'; filterBar.style.display = 'flex';
+                fJournalOpts.style.display = 'flex'; fReportOpts.style.display = 'none';
+            } else if(['er', 'bilanz'].includes(tabId)) {
+                document.getElementById(`filterPlaceholder${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).appendChild(filterBar);
+                kFilter.style.display = 'none'; filterBar.style.display = 'flex';
+                fJournalOpts.style.display = 'none'; fReportOpts.style.display = 'flex';
+            } else {
+                filterBar.style.display = 'none';
+                if(tabId === 'kp') renderKontenplanOverview();
+            }
+        };
+
+        window.openEBModal = () => { renderEB(); document.getElementById('ebModal').style.display = 'block'; };
+        window.closeEBModal = () => { document.getElementById('ebModal').style.display = 'none'; };
+
+        function init() {
+            const year = document.getElementById('selectedYear').value;
+            const oSel = document.getElementById('objekt');
+            oSel.innerHTML = ''; objekte.forEach(o => oSel.innerHTML += `<option value="${o}">${o}</option>`);
+            const sSel = document.getElementById('sollKonto'), hSel = document.getElementById('habenKonto');
+            sSel.innerHTML = ''; hSel.innerHTML = '';
+            kontenplan.sort((a,b) => a.id - b.id).forEach(k => {
+                const html = `<option value="${k.id}">${k.id} - ${k.name}</option>`;
+                sSel.innerHTML += html; hSel.innerHTML += html;
+            });
+            initFilterUI();
+            updateYearConstraints(year);
+        }
+
+        function initFilterUI() {
+            const cbContainer = document.getElementById('objektCheckboxes');
+            cbContainer.innerHTML = '';
+            objekte.forEach(obj => {
+                cbContainer.innerHTML += `<label class="filter-cb-label"><input type="checkbox" class="filter-cb" value="${obj}" checked onchange="wendeFilterAn()"> ${obj}</label>`;
+            });
+            const filterKonto = document.getElementById('filterKonto');
+            filterKonto.innerHTML = '<option value="Alle">Alle Konten</option>';
+            kontenplan.forEach(k => filterKonto.innerHTML += `<option value="${k.id}">${k.id} - ${k.name}</option>`);
+        }
+
+        window.filterLoeschen = () => {
+            const year = document.getElementById('selectedYear').value;
+            document.querySelectorAll('.filter-cb').forEach(cb => cb.checked = true);
+            document.getElementById('filterKonto').value = 'Alle';
+            
+            document.getElementById('jFiltIntern').checked = false;
+            document.getElementById('jFiltPrivat').checked = false;
+            document.getElementById('jFiltNach').checked = false;
+
+            document.getElementById('rFiltIntern').checked = true;
+            document.getElementById('rFiltPrivat').checked = true;
+            document.getElementById('rFiltNach').checked = true;
+
+            if (istAbschlussAnsicht) toggleAbschlussAnsicht(); 
+
+            updateYearConstraints(year);
+            wendeFilterAn();
+        }
+
+        function formatCHF(r) { return (r / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 }); }
+        function formatDatumCH(d) { if(!d) return '-'; const p = d.split('-'); return `${p[2]}.${p[1]}.${p[0]}`; }
+        function getKName(id) { return kontenplan.find(k => k.id === id)?.name || 'Unbekannt'; }
+
+        function renderKontenplanOverview() {
+            const container = document.getElementById('kontenplanOverview');
+            container.innerHTML = '';
+            const kategorien = ["Aktiv", "Passiv", "Ertrag", "Aufwand"];
+            
+            kategorien.forEach(kat => {
+                const div = document.createElement('div');
+                div.className = "konten-kategorie";
+                div.innerHTML = `<h3>${kat}konten</h3>`;
+                const table = document.createElement('table');
+                kontenplan.filter(k => k.typ === kat).sort((a,b) => a.id - b.id).forEach(k => {
+                    table.innerHTML += `<tr><td style="width:60px; font-weight:bold;">${k.id}</td><td>${k.name}</td></tr>`;
+                });
+                div.appendChild(table);
+                container.appendChild(div);
+            });
+        }
+
+        function renderEB() {
+            const year = document.getElementById('selectedYear').value;
+            const body = document.getElementById('ebBody'); body.innerHTML = '';
+            kontenplan.filter(k => k.typ === "Aktiv" || k.typ === "Passiv").forEach(konto => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${konto.id} - ${konto.name}</td>`;
+                objekte.forEach(objekt => {
+                    const key = `${year}_${konto.id}_${objekt}`;
+                    const ebEintrag = lokaleEB.find(e => e.id === key);
+                    const startWert = ebEintrag ? (ebEintrag.betrag / 100).toFixed(2) : "0.00";
+                    row.innerHTML += `<td class="right"><input type="number" step="0.01" class="eb-input" value="${startWert}" onblur="saveEB('${konto.id}', '${objekt}', this.value)"></td>`;
+                });
+                body.appendChild(row);
+            });
+        }
+
+        window.saveEB = async (accountId, objekt, value) => {
+            const year = document.getElementById('selectedYear').value;
+            const rappen = Math.round(parseFloat(value) * 100);
+            await setDoc(doc(db, "eroeffnungsbilanz", `${year}_${accountId}_${objekt}`), { year, accountId, objekt, betrag: rappen });
+        };
+
+        function ladeDaten() {
+            const year = document.getElementById('selectedYear').value;
+            const startDate = `${year}-01-01`;
+            const endDate = `${year}-12-31`;
+
+            document.getElementById('loadingJournal').style.display = 'inline';
+
+            if (unsubscribeBuchungen) unsubscribeBuchungen();
+            if (unsubscribeEB) unsubscribeEB();
+
+            const qBuchungen = query(
+                collection(db, "buchungen"),
+                where("datum_eingabe", ">=", startDate),
+                where("datum_eingabe", "<=", endDate),
+                orderBy("datum_eingabe", "desc")
+            );
+
+            unsubscribeBuchungen = onSnapshot(qBuchungen, (snap) => {
+                document.getElementById('loadingJournal').style.display = 'none';
+                lokaleBuchungen = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                updateView();
+            });
+
+            const qEB = query(
+                collection(db, "eroeffnungsbilanz"),
+                where("year", "==", year)
+            );
+
+            unsubscribeEB = onSnapshot(qEB, (snap) => {
+                lokaleEB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderEB(); 
+                updateView();
+            });
+        }
+
+        document.getElementById('btnBuchen').onclick = async () => {
+            const d = document.getElementById('datum').value;
+            const t = document.getElementById('text').value;
+            const b = document.getElementById('betrag').value;
+            
+            if(!d || !t || !b) return alert("Daten fehlen!");
+            
+            const anteilInternVal = document.getElementById('anteilIntern').value;
+            const anteilPrivatVal = document.getElementById('anteilPrivat').value;
+
+            const data = { 
+                datum_eingabe: d, 
+                objekt: document.getElementById('objekt').value, 
+                text: t, 
+                betrag: Math.round(parseFloat(b) * 100), 
+                soll: document.getElementById('sollKonto').value, 
+                haben: document.getElementById('habenKonto').value, 
+                intern_only: document.getElementById('nurIntern').checked,
+                privat: document.getElementById('privat').checked,
+                nachverfolgung: document.getElementById('nachverfolgung').checked,
+                anteil_intern: anteilInternVal ? Math.round(parseFloat(anteilInternVal) * 100) : 0,
+                anteil_privat: anteilPrivatVal ? Math.round(parseFloat(anteilPrivatVal) * 100) : 0
+            };
+            
+            if(bearbeitungsModusId) {
+                await updateDoc(doc(db, "buchungen", bearbeitungsModusId), data);
+            } else {
+                await addDoc(collection(db, "buchungen"), { ...data, erstellt_am: serverTimestamp() });
+            }
+            resetForm();
+        };
+
+        function resetForm() {
+            bearbeitungsModusId = null; document.getElementById('formTitel').innerText = "Neue Buchung erfassen";
+            document.getElementById('text').value = ''; 
+            document.getElementById('betrag').value = '';
+            document.getElementById('nurIntern').checked = false; 
+            document.getElementById('privat').checked = false; 
+            document.getElementById('nachverfolgung').checked = false; 
+            document.getElementById('anteilIntern').value = '';
+            document.getElementById('anteilPrivat').value = '';
+            
+            window.toggleAnteilFields();
+            updateYearConstraints(document.getElementById('selectedYear').value);
+        }
+        document.getElementById('btnAbbrechen').onclick = resetForm;
+
+        window.bearbeiteBuchung = (id) => {
+            const b = lokaleBuchungen.find(x => x.id === id); bearbeitungsModusId = id;
+            document.getElementById('datum').value = b.datum_eingabe; 
+            document.getElementById('objekt').value = b.objekt;
+            document.getElementById('text').value = b.text; 
+            document.getElementById('sollKonto').value = b.soll;
+            document.getElementById('habenKonto').value = b.haben; 
+            document.getElementById('betrag').value = (b.betrag/100).toFixed(2);
+            
+            document.getElementById('nurIntern').checked = b.intern_only || false;
+            document.getElementById('privat').checked = b.privat || false;
+            document.getElementById('nachverfolgung').checked = b.nachverfolgung || false;
+            
+            document.getElementById('anteilIntern').value = (b.anteil_intern && b.anteil_intern > 0) ? (b.anteil_intern/100).toFixed(2) : '';
+            document.getElementById('anteilPrivat').value = (b.anteil_privat && b.anteil_privat > 0) ? (b.anteil_privat/100).toFixed(2) : '';
+            
+            window.toggleAnteilFields();
+
+            document.getElementById('formTitel').innerText = "Buchung bearbeiten"; document.getElementById('btnAbbrechen').style.display = "block";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+        window.loescheBuchung = async (id) => { if(confirm("Buchung wirklich löschen?")) await deleteDoc(doc(db, "buchungen", id)); };
+
+        window.wendeFilterAn = () => updateView();
+        window.sortiere = (s) => {
+            if(aktuelleSortierung.spalte === s) aktuelleSortierung.richtung = aktuelleSortierung.richtung === 'asc' ? 'desc' : 'asc';
+            else { aktuelleSortierung.spalte = s; aktuelleSortierung.richtung = 'asc'; }
+            updateView();
+        };
+
+        function updateView() {
+            const year = document.getElementById('selectedYear').value;
+            let jahrBuchungen = [...lokaleBuchungen].filter(b => b.datum_eingabe && b.datum_eingabe.startsWith(year));
+            
+            let datenBasis = [];
+
+            // 1. SPLIT-LOGIK FÜR TEILBETRÄGE
+            jahrBuchungen.forEach(b => {
+                let parts = [];
+                let remainingBetrag = b.betrag;
+                
+                let internAmt = (b.intern_only && b.anteil_intern > 0 && b.anteil_intern <= remainingBetrag) ? b.anteil_intern : 0;
+                let privatAmt = (b.privat && b.anteil_privat > 0 && b.anteil_privat <= (remainingBetrag - internAmt)) ? b.anteil_privat : 0;
+                
+                let normalAmt = remainingBetrag - internAmt - privatAmt;
+                
+                let isSplit = (internAmt > 0 && internAmt < b.betrag) || (privatAmt > 0 && privatAmt < b.betrag) || (internAmt > 0 && privatAmt > 0);
+
+                if (isSplit) {
+                    if (normalAmt > 0) {
+                        parts.push({ ...b, betrag: normalAmt, intern_only: false, privat: false, is_split_part: true });
+                    }
+                    if (internAmt > 0) {
+                        parts.push({ ...b, betrag: internAmt, intern_only: true, privat: false, is_split_part: true });
+                    }
+                    if (privatAmt > 0) {
+                        parts.push({ ...b, betrag: privatAmt, intern_only: false, privat: true, is_split_part: true });
+                    }
+                } else {
+                    parts.push({ ...b });
+                }
+
+                // Alle existierenden Teile dem Basis-Array hinzufügen
+                parts.forEach(p => datenBasis.push(p));
+            });
+
+            // 2. GLOBALE FILTER (Objekt & Datum)
+            const ausgewaehlteObjekte = Array.from(document.querySelectorAll('.filter-cb:checked')).map(cb => cb.value);
+            datenBasis = datenBasis.filter(b => ausgewaehlteObjekte.includes(b.objekt));
+            
+            const fVon = document.getElementById('filterDatumVon').value, fBis = document.getElementById('filterDatumBis').value;
+            if(fVon) datenBasis = datenBasis.filter(b => b.datum_eingabe >= fVon);
+            if(fBis) datenBasis = datenBasis.filter(b => b.datum_eingabe <= fBis);
+            
+            // 3. BERECHNUNG FÜR ER / BILANZ (Inklusive-Filter + Abschluss Ansicht)
+            let datenReports = [...datenBasis];
+            if (istAbschlussAnsicht || !document.getElementById('rFiltIntern').checked) {
+                datenReports = datenReports.filter(b => !b.intern_only);
+            }
+            if (!document.getElementById('rFiltPrivat').checked) {
+                datenReports = datenReports.filter(b => !b.privat);
+            }
+            if (!document.getElementById('rFiltNach').checked) {
+                datenReports = datenReports.filter(b => !b.nachverfolgung);
+            }
+            berechneAbschluesse(datenReports, ausgewaehlteObjekte);
+            
+            // 4. FILTER FÜR JOURNAL (Exklusive-Filter + Abschluss Ansicht)
+            let datenJournal = [...datenBasis];
+            
+            if (istAbschlussAnsicht) {
+                datenJournal = datenJournal.filter(b => !b.intern_only);
+            } else {
+                const jInt = document.getElementById('jFiltIntern').checked;
+                const jPri = document.getElementById('jFiltPrivat').checked;
+                const jNach = document.getElementById('jFiltNach').checked;
+
+                if (jInt || jPri || jNach) {
+                    datenJournal = datenJournal.filter(b => {
+                        let keep = false;
+                        if (jInt && b.intern_only) keep = true;
+                        if (jPri && b.privat) keep = true;
+                        if (jNach && b.nachverfolgung) keep = true;
+                        return keep;
+                    });
+                }
+            }
+
+            const fKonto = document.getElementById('filterKonto').value;
+            if(fKonto !== 'Alle') datenJournal = datenJournal.filter(b => b.soll === fKonto || b.haben === fKonto);
+            
+            datenJournal.sort((a,b) => {
+                let wA = a[aktuelleSortierung.spalte] || '', wB = b[aktuelleSortierung.spalte] || '';
+                if(aktuelleSortierung.spalte === 'betrag') { wA = Number(wA); wB = Number(wB); } else { wA = wA.toString().toLowerCase(); wB = wB.toString().toLowerCase(); }
+                if(wA < wB) return aktuelleSortierung.richtung === 'asc' ? -1 : 1;
+                if(wA > wB) return aktuelleSortierung.richtung === 'asc' ? 1 : -1;
+                return 0;
+            });
+            document.querySelectorAll('.sort-icon').forEach(s => s.innerText = '');
+            const activeIcon = document.getElementById('sort_' + aktuelleSortierung.spalte);
+            if(activeIcon) activeIcon.innerText = aktuelleSortierung.richtung === 'asc' ? ' ▲' : ' ▼';
+            
+            renderJournal(datenJournal);
+        }
+
+        function renderJournal(daten) {
+            const body = document.getElementById('journalBody'); body.innerHTML = '';
+            if(daten.length === 0) { body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">Keine Buchungen gefunden.</td></tr>'; return; }
+            
+            daten.forEach(b => {
+                let trClass = '';
+                if (b.nachverfolgung) trClass = 'class="nachverfolgung-row"';
+                else if (b.intern_only) trClass = 'class="intern-row"';
+                else if (b.privat) trClass = 'class="privat-row"';
+                
+                let icons = [];
+                if (b.nachverfolgung) icons.push('🔴');
+                if (b.intern_only) icons.push('🔸');
+                if (b.privat) icons.push('🟩');
+                let iconStr = icons.length > 0 ? ' ' + icons.join(' ') : '';
+                
+                let displayTxt = b.text;
+                // Blende "(Teilbuchung)" aus, wenn die Abschluss Ansicht aktiv ist
+                if (b.is_split_part && !istAbschlussAnsicht) {
+                    displayTxt += ' <i style="font-size:0.85em; color:#777;">(Teilbuchung)</i>';
+                }
+
+                body.innerHTML += `<tr ${trClass}>
+                    <td>${formatDatumCH(b.datum_eingabe)}</td>
+                    <td>${b.objekt}</td>
+                    <td>${displayTxt}${iconStr}</td>
+                    <td>${b.soll} (${getKName(b.soll)})</td>
+                    <td>${b.haben} (${getKName(b.haben)})</td>
+                    <td class="right chf">${formatCHF(b.betrag)}</td>
+                    <td style="text-align:center">
+                        <button class="action-btn" title="Bearbeiten" onclick="bearbeiteBuchung('${b.id}')">✏️</button>
+                        <button class="action-btn" title="Löschen" onclick="loescheBuchung('${b.id}')">🗑️</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function berechneAbschluesse(daten, aktiveObjekte) {
+            const year = document.getElementById('selectedYear').value;
+            const salden = {}; 
+            let tEbAktiv = 0;
+            let tEbPassiv = 0;
+
+            kontenplan.forEach(k => {
+                salden[k.id] = 0; 
+                aktiveObjekte.forEach(obj => {
+                    const ebEintrag = lokaleEB.find(e => e.id === `${year}_${k.id}_${obj}`);
+                    if(ebEintrag) {
+                        salden[k.id] += ebEintrag.betrag;
+                        if(k.typ === "Aktiv") tEbAktiv += ebEintrag.betrag;
+                        if(k.typ === "Passiv") tEbPassiv += ebEintrag.betrag;
+                    }
+                });
+            });
+            
+            daten.forEach(b => {
+                const kSoll = kontenplan.find(k => k.id === b.soll), kHaben = kontenplan.find(k => k.id === b.haben);
+                if(kSoll && (kSoll.typ === "Aktiv" || kSoll.typ === "Aufwand")) salden[b.soll] += b.betrag; else if(kSoll) salden[b.soll] -= b.betrag;
+                if(kHaben && (kHaben.typ === "Aktiv" || kHaben.typ === "Aufwand")) salden[b.haben] -= b.betrag; else if(kHaben) salden[b.haben] += b.betrag;
+            });
+            
+            let tAuf = 0, tErt = 0, tAkt = 0, tPas = 0;
+            const bAuf = document.getElementById('erAufwandBody'), bErt = document.getElementById('erErtragBody'), bAkt = document.getElementById('bilanzAktivenBody'), bPas = document.getElementById('bilanzPassivenBody');
+            bAuf.innerHTML = ''; bErt.innerHTML = ''; bAkt.innerHTML = ''; bPas.innerHTML = '';
+            
+            kontenplan.forEach(k => {
+                if(salden[k.id] === 0) return;
+                const r = `<tr><td>${k.name}</td><td class="right chf">${formatCHF(salden[k.id])}</td></tr>`;
+                if(k.typ === "Aufwand") { bAuf.innerHTML += r; tAuf += salden[k.id]; }
+                if(k.typ === "Ertrag") { bErt.innerHTML += r; tErt += salden[k.id]; }
+                if(k.typ === "Aktiv") { bAkt.innerHTML += r; tAkt += salden[k.id]; }
+                if(k.typ === "Passiv") { bPas.innerHTML += r; tPas += salden[k.id]; }
+            });
+            
+            const gewinn = tErt - tAuf;
+            const nettoEB = tEbAktiv - tEbPassiv;
+
+            document.getElementById('totalAufwand').innerText = formatCHF(tAuf); 
+            document.getElementById('totalErtrag').innerText = formatCHF(tErt);
+            document.getElementById('erErgebnisWert').innerText = `CHF ${formatCHF(gewinn)}`;
+            document.getElementById('erErgebnisTitel').innerText = gewinn >= 0 ? "Gewinn" : "Verlust";
+            document.getElementById('erErgebnisWert').className = gewinn >= 0 ? "chf" : "chf negative";
+            
+            document.getElementById('bilanzGewinnBody').innerHTML = `
+                <tr class="profit-row" style="color: var(--secondary);"><td>Eröffnungsbilanz (Saldo)</td><td class="right chf">${formatCHF(nettoEB)}</td></tr>
+                <tr class="profit-row"><td>${gewinn >= 0 ? 'Gewinn' : 'Verlust'} (ER)</td><td class="right chf">${formatCHF(gewinn)}</td></tr>
+            `;
+            
+            document.getElementById('totalAktiven').innerText = formatCHF(tAkt); 
+            document.getElementById('totalPassiven').innerText = formatCHF(tPas + gewinn + nettoEB);
+        }
+    </script>
+</body>
+</html>
