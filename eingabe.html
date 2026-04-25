@@ -568,6 +568,14 @@
 
         function formatCHF(r) { return (r / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 }); }
         function formatDatumCH(d) { if(!d) return '-'; const p = d.split('-'); return `${p[2]}.${p[1]}.${p[0]}`; }
+        function escapeHtml(text) {
+            return String(text ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
         function getKName(id) { return kontenplan.find(k => k.id === id)?.name || 'Unbekannt'; }
 
         function renderKontenplanOverview() {
@@ -833,7 +841,7 @@
                 if (b.privat) icons.push('🟩');
                 let iconStr = icons.length > 0 ? ' ' + icons.join(' ') : '';
                 
-                let displayTxt = b.text;
+                let displayTxt = escapeHtml(b.text);
                 // Blende "(Teilbuchung)" aus, wenn die Abschluss Ansicht aktiv ist
                 if (b.is_split_part && !istAbschlussAnsicht) {
                     displayTxt += ' <i style="font-size:0.85em; color:#777;">(Teilbuchung)</i>';
@@ -841,10 +849,10 @@
 
                 body.innerHTML += `<tr ${trClass}>
                     <td>${formatDatumCH(b.datum_eingabe)}</td>
-                    <td>${b.objekt}</td>
+                    <td>${escapeHtml(b.objekt)}</td>
                     <td>${displayTxt}${iconStr}</td>
-                    <td>${b.soll} (${getKName(b.soll)})</td>
-                    <td>${b.haben} (${getKName(b.haben)})</td>
+                    <td>${escapeHtml(b.soll)} (${escapeHtml(getKName(b.soll))})</td>
+                    <td>${escapeHtml(b.haben)} (${escapeHtml(getKName(b.haben))})</td>
                     <td class="right chf">${formatCHF(b.betrag)}</td>
                     <td style="text-align:center">
                         <button class="action-btn" title="Bearbeiten" onclick="bearbeiteBuchung('${b.id}')">✏️</button>
