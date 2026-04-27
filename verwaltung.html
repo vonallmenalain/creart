@@ -111,7 +111,7 @@
         .summary-badge { font-size: 0.9em; background: #eef6fb; color: var(--primary); border-radius: 999px; padding: 4px 10px; margin-left: 10px; }
         .muted { color: #667085; }
         .small-note { font-size: 0.88em; color: #667085; display: flex; align-items: center; }
-        .entry-type-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.82fr); gap: 20px; align-items: start; }
+        .entry-type-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
         .event-ort-hidden { display: none; }
         .matrix-filter-wrap { position: relative; }
         .matrix-filter-btn { min-width: 320px; justify-content: space-between; display: inline-flex; align-items: center; gap: 8px; }
@@ -127,10 +127,10 @@
         .matrix-filter-actions { display: flex; gap: 8px; margin-top: 10px; }
         .sonstige-table { table-layout: fixed; }
         .sonstige-table th:nth-child(1), .sonstige-table td:nth-child(1) { width: 92px; }
-        .sonstige-table th:nth-child(2), .sonstige-table td:nth-child(2) { width: 130px; }
+        .sonstige-table th:nth-child(2), .sonstige-table td:nth-child(2) { width: 118px; }
         .sonstige-table th:nth-child(3), .sonstige-table td:nth-child(3) { width: 56px; }
         .sonstige-table th:nth-child(4), .sonstige-table td:nth-child(4) { width: 96px; }
-        .sonstige-table th:nth-child(5), .sonstige-table td:nth-child(5) { width: 122px; }
+        .sonstige-table th:nth-child(5), .sonstige-table td:nth-child(5) { width: 132px; }
 
         .table-card-header, .search-toolbar, .debitor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
         .search-input-wrap { flex: 1 1 320px; }
@@ -760,8 +760,8 @@
             return parts.join('.');
         }
 
-        function parsePositiveAnzahl(value) {
-            return Math.max(0, parseInt(String(value ?? '').trim(), 10) || 0);
+        function parseSignedAnzahl(value) {
+            return parseInt(String(value ?? '').trim(), 10) || 0;
         }
 
         function berechneJahresuebersichtSummen() {
@@ -786,7 +786,7 @@
                 (eintrag.produkte || []).forEach((produktDaten) => {
                     const produktName = produktDaten.name;
                     if (!jahresTotals.produkte[produktName]) return;
-                    const anzahl = parsePositiveAnzahl(produktDaten.anzahl);
+                    const anzahl = parseSignedAnzahl(produktDaten.anzahl);
                     const betrag = Math.max(0, Math.round(Number(produktDaten.betrag_rappen || 0)));
                     matrix[monatKey].produkte[produktName].anzahl += anzahl;
                     matrix[monatKey].produkte[produktName].betrag += betrag;
@@ -931,8 +931,8 @@
                 tbody.innerHTML += `
                     <tr>
                         <td>${produkt}</td>
-                        <td class="center"><input type="number" class="tbl-input anzahl-input" data-idx="${index}" min="0"></td>
-                        <td class="right"><input type="number" class="tbl-input betrag-input" data-idx="${index}" step="0.01" min="0"></td>
+                        <td class="center"><input type="number" class="tbl-input anzahl-input" data-idx="${index}" step="1"></td>
+                        <td class="right"><input type="number" class="tbl-input betrag-input" data-idx="${index}" step="0.01"></td>
                     </tr>
                 `;
             });
@@ -1159,11 +1159,11 @@
             for (let i = 0; i < produkte.length; i += 1) {
                 const anzahl = parseInt(anzahlInputs[i].value, 10) || 0;
                 const betrag = parseFloat(betragInputs[i].value) || 0;
-                if (anzahl > 0 || betrag > 0) {
+                if (anzahl !== 0 || betrag !== 0) {
                     eventProdukte.push({ name: produkte[i], anzahl, betrag_rappen: Math.round(betrag * 100) });
                 }
             }
-            if (eventProdukte.length === 0) return showToast('Bitte trage mindestens bei einem Produkt Werte ein.', 'warning');
+            if (eventProdukte.length === 0) return showToast('Bitte trage mindestens bei einem Produkt einen Wert ein.', 'warning');
 
             const payload = { typ, datum, event_name: eventName, ort: typ === 'markt' ? ort : '', produkte: eventProdukte };
             try {
@@ -2001,18 +2001,18 @@
                 let row = `<tr><td>${monateNamen[monat - 1]}</td>`;
                 produkte.forEach((produkt, produktIndex) => {
                     const data = matrix[monatKey].produkte[produkt];
-                    row += `<td class="center col-border">${data.anzahl > 0 ? data.anzahl : '-'}</td><td class="right chf">${data.betrag > 0 ? formatCHF(data.betrag) : ''}</td>`;
+                    row += `<td class="center col-border">${data.anzahl !== 0 ? data.anzahl : '-'}</td><td class="right chf">${data.betrag !== 0 ? formatCHF(data.betrag) : ''}</td>`;
                 });
-                row += `<td class="center col-border col-total" id="monat_total_anzahl_${monat}">${matrix[monatKey].anzahl > 0 ? matrix[monatKey].anzahl : '-'}</td><td class="right chf col-total" id="monat_total_betrag_${monat}">${matrix[monatKey].betrag > 0 ? formatCHF(matrix[monatKey].betrag) : '-'}</td></tr>`;
+                row += `<td class="center col-border col-total" id="monat_total_anzahl_${monat}">${matrix[monatKey].anzahl !== 0 ? matrix[monatKey].anzahl : '-'}</td><td class="right chf col-total" id="monat_total_betrag_${monat}">${matrix[monatKey].betrag !== 0 ? formatCHF(matrix[monatKey].betrag) : '-'}</td></tr>`;
                 tbody.innerHTML += row;
             }
 
             let footer = '<tr class="row-total"><td>Total Jahr</td>';
             produkte.forEach((produkt, produktIndex) => {
                 const total = jahresTotals.produkte[produkt];
-                footer += `<td class="center col-border" id="jahr_total_anzahl_${produktIndex}">${total.anzahl > 0 ? total.anzahl : '-'}</td><td class="right chf" id="jahr_total_betrag_${produktIndex}">${total.betrag > 0 ? formatCHF(total.betrag) : ''}</td>`;
+                footer += `<td class="center col-border" id="jahr_total_anzahl_${produktIndex}">${total.anzahl !== 0 ? total.anzahl : '-'}</td><td class="right chf" id="jahr_total_betrag_${produktIndex}">${total.betrag !== 0 ? formatCHF(total.betrag) : ''}</td>`;
             });
-            footer += `<td class="center col-border col-total" style="color: var(--primary);" id="jahr_total_gesamt_anzahl">${jahresTotals.anzahl > 0 ? jahresTotals.anzahl : '-'}</td><td class="right chf col-total" style="color: var(--primary); font-size: 1.1em;" id="jahr_total_gesamt_betrag">${jahresTotals.betrag > 0 ? formatCHF(jahresTotals.betrag) : '-'}</td></tr>`;
+            footer += `<td class="center col-border col-total" style="color: var(--primary);" id="jahr_total_gesamt_anzahl">${jahresTotals.anzahl !== 0 ? jahresTotals.anzahl : '-'}</td><td class="right chf col-total" style="color: var(--primary); font-size: 1.1em;" id="jahr_total_gesamt_betrag">${jahresTotals.betrag !== 0 ? formatCHF(jahresTotals.betrag) : '-'}</td></tr>`;
             document.getElementById('matrixFoot').innerHTML = footer;
         };
 
