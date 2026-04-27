@@ -111,26 +111,7 @@
         .summary-badge { font-size: 0.9em; background: #eef6fb; color: var(--primary); border-radius: 999px; padding: 4px 10px; margin-left: 10px; }
         .muted { color: #667085; }
         .small-note { font-size: 0.88em; color: #667085; display: flex; align-items: center; }
-        .entry-type-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-        .event-ort-hidden { display: none; }
-        .matrix-filter-wrap { position: relative; }
-        .matrix-filter-btn { min-width: 320px; justify-content: space-between; display: inline-flex; align-items: center; gap: 8px; }
-        .matrix-filter-dropdown {
-            position: absolute; right: 0; top: calc(100% + 8px); z-index: 12; min-width: 360px; max-width: 460px;
-            background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 14px 30px rgba(0,0,0,0.12);
-            padding: 12px; display: none;
-        }
-        .matrix-filter-dropdown.open { display: block; }
-        .matrix-filter-list { max-height: 320px; overflow-y: auto; display: grid; gap: 8px; padding-right: 2px; }
-        .matrix-filter-item { display: flex; gap: 8px; align-items: flex-start; font-size: 0.92em; }
-        .matrix-filter-item span { line-height: 1.25; }
-        .matrix-filter-actions { display: flex; gap: 8px; margin-top: 10px; }
-        .sonstige-table { table-layout: fixed; }
-        .sonstige-table th:nth-child(1), .sonstige-table td:nth-child(1) { width: 92px; }
-        .sonstige-table th:nth-child(2), .sonstige-table td:nth-child(2) { width: 118px; }
-        .sonstige-table th:nth-child(3), .sonstige-table td:nth-child(3) { width: 56px; }
-        .sonstige-table th:nth-child(4), .sonstige-table td:nth-child(4) { width: 96px; }
-        .sonstige-table th:nth-child(5), .sonstige-table td:nth-child(5) { width: 132px; }
+        .entry-type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
 
         .table-card-header, .search-toolbar, .debitor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
         .search-input-wrap { flex: 1 1 320px; }
@@ -318,7 +299,7 @@
                     </div>
                     <div class="form-group col-2"><label>Datum</label><input type="date" id="eventDatum"></div>
                     <div class="form-group col-3" id="eventNameGroup"><label id="eventNameLabel">Markt / Ort</label><input type="text" id="eventName" placeholder="z.B. Koffermarkt Bern"></div>
-                    <div class="form-group col-4" id="eventOrtGroup"><label>Bemerkungen</label><input type="text" id="eventOrt" placeholder="z.B. Schönes Wetter, viele Besucher"></div>
+                    <div class="form-group col-4"><label>Bemerkungen</label><input type="text" id="eventOrt" placeholder="z.B. Schönes Wetter, viele Besucher"></div>
                 </div>
                 <div class="table-container">
                     <table id="produkteEingabeTabelle">
@@ -1167,7 +1148,7 @@
             }
             if (eventProdukte.length === 0) return showToast('Bitte trage mindestens bei einem Produkt einen Wert ein.', 'warning');
 
-            const payload = { typ, datum, event_name: eventName, ort: typ === 'markt' ? ort : '', produkte: eventProdukte };
+            const payload = { typ, datum, event_name: eventName, ort, produkte: eventProdukte };
             try {
                 if (bearbeitungsEventId) {
                     await updateDoc(doc(db, 'verkaeufe_events', bearbeitungsEventId), payload);
@@ -1191,7 +1172,7 @@
 
             const baueZeilen = (liste, isSonstige = false) => {
                 if (liste.length === 0) {
-                    return `<tr><td colspan="${isSonstige ? 5 : 6}" class="center muted" style="padding: 20px;">Für dieses Jahr sind noch keine ${isSonstige ? 'sonstigen Verkäufe' : 'Markt-/Ausstellungs-Einträge'} erfasst.</td></tr>`;
+                    return `<tr><td colspan="6" class="center muted" style="padding: 20px;">Für dieses Jahr sind noch keine ${isSonstige ? 'sonstigen Verkäufe' : 'Markt-/Ausstellungs-Einträge'} erfasst.</td></tr>`;
                 }
                 return liste.map(event => {
                 const totals = berechneEventSummen(event);
@@ -2003,7 +1984,7 @@
                 let row = `<tr><td>${monateNamen[monat - 1]}</td>`;
                 produkte.forEach((produkt, produktIndex) => {
                     const data = matrix[monatKey].produkte[produkt];
-                    row += `<td class="center col-border">${data.anzahl !== 0 ? data.anzahl : '-'}</td><td class="right chf">${data.betrag !== 0 ? formatCHF(data.betrag) : ''}</td>`;
+                    row += `<td class="center col-border">${data.anzahl > 0 ? data.anzahl : '-'}</td><td class="right chf">${data.betrag > 0 ? formatCHF(data.betrag) : ''}</td>`;
                 });
                 row += `<td class="center col-border col-total" id="monat_total_anzahl_${monat}">${matrix[monatKey].anzahl !== 0 ? matrix[monatKey].anzahl : '-'}</td><td class="right chf col-total" id="monat_total_betrag_${monat}">${matrix[monatKey].betrag !== 0 ? formatCHF(matrix[monatKey].betrag) : '-'}</td></tr>`;
                 tbody.innerHTML += row;
