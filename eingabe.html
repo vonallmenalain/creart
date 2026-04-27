@@ -385,7 +385,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
         
         const firebaseConfig = {
@@ -400,6 +400,14 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+
+        enableIndexedDbPersistence(db).catch((err) => {
+            if (err.code === 'failed-precondition') {
+                console.warn('Mehrere Tabs offen. Offline-Cache funktioniert am besten in einem einzigen Tab.');
+            } else if (err.code === 'unimplemented') {
+                console.warn('Der aktuelle Browser unterstützt kein Caching.');
+            }
+        });
         
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -461,6 +469,25 @@
         let unsubscribeBuchungen = null;
         let unsubscribeEB = null;
 
+        function stopRealtimeSubscriptions() {
+            if (unsubscribeBuchungen) {
+                unsubscribeBuchungen();
+                unsubscribeBuchungen = null;
+            }
+            if (unsubscribeEB) {
+                unsubscribeEB();
+                unsubscribeEB = null;
+            }
+        }
+
+        function handleVisibilityChange() {
+            if (document.hidden) {
+                stopRealtimeSubscriptions();
+                return;
+            }
+            ladeDaten();
+        }
+
         window.toggleAbschlussAnsicht = () => {
             istAbschlussAnsicht = !istAbschlussAnsicht;
             const btn = document.getElementById('btnAbschlussAnsicht');
@@ -474,7 +501,7 @@
         window.changeYear = () => {
             const year = document.getElementById('selectedYear').value;
             updateYearConstraints(year);
-            ladeDaten(); 
+            ladeDaten();
         };
 
         window.toggleAnteilFields = () => {
@@ -651,6 +678,11 @@
         };
 
         function ladeDaten() {
+            if (document.hidden) {
+                stopRealtimeSubscriptions();
+                return;
+            }
+
             const year = document.getElementById('selectedYear').value;
             const startDate = `${year}-01-01`;
             const endDate = `${year}-12-31`;
@@ -684,6 +716,8 @@
                 updateView();
             });
         }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         document.getElementById('btnBuchen').onclick = async () => {
             const btn = document.getElementById('btnBuchen');
