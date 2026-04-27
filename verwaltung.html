@@ -787,7 +787,7 @@
                     const produktName = produktDaten.name;
                     if (!jahresTotals.produkte[produktName]) return;
                     const anzahl = parseSignedAnzahl(produktDaten.anzahl);
-                    const betrag = Math.max(0, Math.round(Number(produktDaten.betrag_rappen || 0)));
+                    const betrag = Math.round(Number(produktDaten.betrag_rappen || 0));
                     matrix[monatKey].produkte[produktName].anzahl += anzahl;
                     matrix[monatKey].produkte[produktName].betrag += betrag;
                     matrix[monatKey].anzahl += anzahl;
@@ -832,6 +832,7 @@
         }
 
         function syncMatrixFilterState() {
+            const bisherigeMarktKeys = new Set((matrixFilterState.marktNamen || []).map(name => getMarketFilterKey(name)));
             const marktNamen = Array.from(new Set(
                 verkaeufeDaten
                     .filter(event => (event.typ || 'markt') === 'markt')
@@ -842,7 +843,8 @@
             const nextSelected = new Set();
             marktNamen.forEach((name) => {
                 const key = getMarketFilterKey(name);
-                if (matrixFilterState.ausgewaehlteMaerkte.has(key) || matrixFilterState.marktNamen.length === 0) {
+                const warBereitsDa = bisherigeMarktKeys.has(key);
+                if (matrixFilterState.ausgewaehlteMaerkte.has(key) || !warBereitsDa) {
                     nextSelected.add(key);
                 }
             });
