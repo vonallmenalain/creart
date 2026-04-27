@@ -111,8 +111,26 @@
         .summary-badge { font-size: 0.9em; background: #eef6fb; color: var(--primary); border-radius: 999px; padding: 4px 10px; margin-left: 10px; }
         .muted { color: #667085; }
         .small-note { font-size: 0.88em; color: #667085; display: flex; align-items: center; }
-        .entry-type-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+        .entry-type-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.82fr); gap: 20px; align-items: start; }
         .event-ort-hidden { display: none; }
+        .matrix-filter-wrap { position: relative; }
+        .matrix-filter-btn { min-width: 320px; justify-content: space-between; display: inline-flex; align-items: center; gap: 8px; }
+        .matrix-filter-dropdown {
+            position: absolute; right: 0; top: calc(100% + 8px); z-index: 12; min-width: 360px; max-width: 460px;
+            background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 14px 30px rgba(0,0,0,0.12);
+            padding: 12px; display: none;
+        }
+        .matrix-filter-dropdown.open { display: block; }
+        .matrix-filter-list { max-height: 320px; overflow-y: auto; display: grid; gap: 8px; padding-right: 2px; }
+        .matrix-filter-item { display: flex; gap: 8px; align-items: flex-start; font-size: 0.92em; }
+        .matrix-filter-item span { line-height: 1.25; }
+        .matrix-filter-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .sonstige-table { table-layout: fixed; }
+        .sonstige-table th:nth-child(1), .sonstige-table td:nth-child(1) { width: 92px; }
+        .sonstige-table th:nth-child(2), .sonstige-table td:nth-child(2) { width: 130px; }
+        .sonstige-table th:nth-child(3), .sonstige-table td:nth-child(3) { width: 56px; }
+        .sonstige-table th:nth-child(4), .sonstige-table td:nth-child(4) { width: 96px; }
+        .sonstige-table th:nth-child(5), .sonstige-table td:nth-child(5) { width: 122px; }
 
         .table-card-header, .search-toolbar, .debitor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
         .search-input-wrap { flex: 1 1 320px; }
@@ -243,6 +261,8 @@
             .fw-summary-dashboard { grid-template-columns: 1fr; }
             .kontenplan-grid { grid-template-columns: 1fr; gap: 15px; }
             .entry-type-grid { grid-template-columns: 1fr; }
+            .matrix-filter-btn { min-width: 100%; width: 100%; }
+            .matrix-filter-dropdown { min-width: 100%; max-width: 100%; left: 0; right: auto; }
             
             /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
             .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
@@ -319,6 +339,19 @@
                     <h2 style="margin-bottom: 8px;">Jahresübersicht <span id="loadingVerkaeufe" style="display:none;">Lade Daten...</span></h2>
                     <div class="small-note">Wird automatisch aus allen erfassten Verkäufen (Markt / Ausstellung + Sonstige Verkäufe) berechnet.</div>
                 </div>
+                <div class="matrix-filter-wrap" id="matrixFilterWrap">
+                    <button type="button" class="btn-secondary matrix-filter-btn" onclick="toggleMatrixFilterDropdown(event)">
+                        <span id="matrixFilterSummary">Filter: Alle Einträge</span>
+                        <span>▾</span>
+                    </button>
+                    <div class="matrix-filter-dropdown" id="matrixFilterDropdown">
+                        <div class="matrix-filter-list" id="matrixFilterList"></div>
+                        <div class="matrix-filter-actions">
+                            <button type="button" class="btn-small" onclick="selectAllMatrixFilter(true)">Alle wählen</button>
+                            <button type="button" class="btn-small" onclick="selectAllMatrixFilter(false)">Alle abwählen</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="table-container" style="margin-top: 15px;"><table class="matrix-table" id="matrixTabelle"><thead id="matrixHead"></thead><tbody id="matrixBody"></tbody><tfoot id="matrixFoot"></tfoot></table></div>
         </div>
@@ -335,7 +368,7 @@
             <div class="card">
                 <div class="table-card-header"><h2 style="margin-bottom:0; display:flex; align-items:center;">Sonstige Verkäufe <span class="summary-badge" id="sonstigeCountBadge">0 Einträge</span></h2></div>
                 <div class="table-container" style="margin-top: 15px;">
-                    <table>
+                    <table class="sonstige-table">
                         <thead><tr><th>Datum</th><th>Beschreibung</th><th class="center">Anzahl</th><th class="right">Umsatz (CHF)</th><th style="text-align:center;">Aktionen</th></tr></thead>
                         <tbody id="sonstigeListeBody"></tbody>
                     </table>
@@ -687,6 +720,7 @@
         let unsubscribeFerienwohnung = null;
 
         let verkaeufeDaten = [];
+        let matrixFilterState = { sonstigeAktiv: true, marktNamen: [], ausgewaehlteMaerkte: new Set() };
         let adressenDaten = [];
         let adressenGeladen = false;
         let debitorenDaten = [];
@@ -745,7 +779,7 @@
                 });
             }
 
-            verkaeufeDaten.forEach((eintrag) => {
+            getGefilterteVerkaeufeFuerMatrix().forEach((eintrag) => {
                 const monat = parseInt(String(eintrag.datum || '').split('-')[1], 10);
                 if (!monat || monat < 1 || monat > 12) return;
                 const monatKey = String(monat);
@@ -791,6 +825,40 @@
 
         function normText(value) {
             return String(value || '').toLocaleLowerCase('de-CH').trim();
+        }
+
+        function getMarketFilterKey(name) {
+            return normText(name);
+        }
+
+        function syncMatrixFilterState() {
+            const marktNamen = Array.from(new Set(
+                verkaeufeDaten
+                    .filter(event => (event.typ || 'markt') === 'markt')
+                    .map(event => String(event.event_name || '').trim())
+                    .filter(Boolean)
+            )).sort((a, b) => a.localeCompare(b, 'de-CH'));
+
+            const nextSelected = new Set();
+            marktNamen.forEach((name) => {
+                const key = getMarketFilterKey(name);
+                if (matrixFilterState.ausgewaehlteMaerkte.has(key) || matrixFilterState.marktNamen.length === 0) {
+                    nextSelected.add(key);
+                }
+            });
+
+            matrixFilterState.marktNamen = marktNamen;
+            matrixFilterState.ausgewaehlteMaerkte = nextSelected;
+            if (typeof matrixFilterState.sonstigeAktiv !== 'boolean') matrixFilterState.sonstigeAktiv = true;
+        }
+
+        function getGefilterteVerkaeufeFuerMatrix() {
+            return verkaeufeDaten.filter((event) => {
+                const typ = event.typ || 'markt';
+                if (typ === 'sonstige') return matrixFilterState.sonstigeAktiv;
+                const key = getMarketFilterKey(event.event_name || '');
+                return matrixFilterState.ausgewaehlteMaerkte.has(key);
+            });
         }
 
         function parseCodeNumber(code, fallback = 0) {
@@ -848,6 +916,7 @@
             document.getElementById('debitorDatum').min = start;
             document.getElementById('debitorDatum').max = `${year}-12-31`;
 
+            matrixFilterState = { sonstigeAktiv: true, marktNamen: [], ausgewaehlteMaerkte: new Set() };
             resetEventForm({ collapse: true, preserveDate: true });
             resetDebitorForm({ collapse: true, preserveDate: true });
             
@@ -881,6 +950,12 @@
             document.getElementById('debitorSuche').addEventListener('input', renderDebitorListe);
             document.getElementById('debitorStatusFilter').addEventListener('change', renderDebitorListe);
             document.getElementById('debitorKundenSuche').addEventListener('input', renderDebitorKundenTreffer);
+            document.addEventListener('click', (ev) => {
+                const wrap = document.getElementById('matrixFilterWrap');
+                const dropdown = document.getElementById('matrixFilterDropdown');
+                if (!wrap || !dropdown) return;
+                if (!wrap.contains(ev.target)) dropdown.classList.remove('open');
+            });
 
             setCollapsibleState('eventFormCard', false, 'eventFormToggleLabel', 'eventFormToggleIcon');
             setCollapsibleState('adressFormCard', false, 'adressFormToggleLabel', 'adressFormToggleIcon');
@@ -888,6 +963,7 @@
             setCollapsibleState('fwFormCard', false, 'fwFormToggleLabel', 'fwFormToggleIcon');
 
             changeYear();
+            renderMatrixFilterControls();
             ladeAdressen();
             ladeDebitoren();
         }
@@ -906,6 +982,66 @@
         // =========================================================================
         // BEREICH: VERKÄUFE
         // =========================================================================
+        function renderMatrixFilterControls() {
+            const list = document.getElementById('matrixFilterList');
+            const summary = document.getElementById('matrixFilterSummary');
+            if (!list || !summary) return;
+
+            const marktItems = matrixFilterState.marktNamen.map((name) => {
+                const key = getMarketFilterKey(name);
+                const encodedKey = encodeURIComponent(key);
+                return `
+                    <label class="matrix-filter-item">
+                        <input type="checkbox" ${matrixFilterState.ausgewaehlteMaerkte.has(key) ? 'checked' : ''} onchange="toggleMatrixMarktFilter('${encodedKey}', this.checked)">
+                        <span>Markt: ${escapeHtml(name)}</span>
+                    </label>
+                `;
+            }).join('');
+
+            list.innerHTML = `
+                <label class="matrix-filter-item">
+                    <input type="checkbox" ${matrixFilterState.sonstigeAktiv ? 'checked' : ''} onchange="toggleMatrixSonstigeFilter(this.checked)">
+                    <span>Alle Sonstigen Verkäufe</span>
+                </label>
+                ${marktItems || '<div class="muted">Keine Märkte im gewählten Jahr vorhanden.</div>'}
+            `;
+
+            const aktiveMaerkte = matrixFilterState.ausgewaehlteMaerkte.size;
+            const totalMaerkte = matrixFilterState.marktNamen.length;
+            const hatAlle = matrixFilterState.sonstigeAktiv && aktiveMaerkte === totalMaerkte;
+            summary.innerText = hatAlle
+                ? 'Filter: Alle Einträge'
+                : `Filter: ${aktiveMaerkte}/${totalMaerkte} Märkte${matrixFilterState.sonstigeAktiv ? ' + Sonstige' : ''}`;
+        }
+
+        window.toggleMatrixFilterDropdown = (ev) => {
+            ev?.stopPropagation();
+            document.getElementById('matrixFilterDropdown')?.classList.toggle('open');
+        };
+
+        window.toggleMatrixMarktFilter = (encodedMarktKey, checked) => {
+            const marktKey = decodeURIComponent(encodedMarktKey);
+            if (checked) matrixFilterState.ausgewaehlteMaerkte.add(marktKey);
+            else matrixFilterState.ausgewaehlteMaerkte.delete(marktKey);
+            renderMatrixFilterControls();
+            renderMatrix();
+        };
+
+        window.toggleMatrixSonstigeFilter = (checked) => {
+            matrixFilterState.sonstigeAktiv = !!checked;
+            renderMatrixFilterControls();
+            renderMatrix();
+        };
+
+        window.selectAllMatrixFilter = (checked) => {
+            matrixFilterState.sonstigeAktiv = !!checked;
+            matrixFilterState.ausgewaehlteMaerkte = checked
+                ? new Set(matrixFilterState.marktNamen.map(name => getMarketFilterKey(name)))
+                : new Set();
+            renderMatrixFilterControls();
+            renderMatrix();
+        };
+
         window.updateEventTypeUI = () => {
             const typ = document.getElementById('eventTyp').value;
             const isMarkt = typ === 'markt';
@@ -1067,7 +1203,7 @@
                 return `
                     <tr>
                         <td>${formatDatumCH(event.datum)}</td>
-                        <td>${escapeHtml(event.event_name || '')}</td>
+                        <td class="${isSonstige ? 'td-truncate mw-120' : ''}" title="${escapeHtml(event.event_name || '')}">${escapeHtml(event.event_name || '')}</td>
                         ${isSonstige ? '' : `<td>${escapeHtml(event.ort || '')}</td>`}
                         <td class="center">${totals.anzahl}</td>
                         <td class="right chf">${formatCHF(totals.betrag)}</td>
@@ -1837,6 +1973,8 @@
             unsubscribeVerkaeufe = onSnapshot(eventsQuery, (snap) => {
                 document.getElementById('loadingVerkaeufe').style.display = 'none';
                 verkaeufeDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                syncMatrixFilterState();
+                renderMatrixFilterControls();
                 renderEventListe();
                 renderMatrix();
             });
