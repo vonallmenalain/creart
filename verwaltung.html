@@ -111,6 +111,8 @@
         .summary-badge { font-size: 0.9em; background: #eef6fb; color: var(--primary); border-radius: 999px; padding: 4px 10px; margin-left: 10px; }
         .muted { color: #667085; }
         .small-note { font-size: 0.88em; color: #667085; display: flex; align-items: center; }
+        .entry-type-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+        .event-ort-hidden { display: none; }
 
         .table-card-header, .search-toolbar, .debitor-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
         .search-input-wrap { flex: 1 1 320px; }
@@ -240,6 +242,7 @@
             .report-grid, .diff-grid { grid-template-columns: 1fr; gap: 30px; }
             .fw-summary-dashboard { grid-template-columns: 1fr; }
             .kontenplan-grid { grid-template-columns: 1fr; gap: 15px; }
+            .entry-type-grid { grid-template-columns: 1fr; }
             
             /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
             .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
@@ -281,14 +284,21 @@
     <div id="verkaeufe" class="tab-content active">
         <div class="card collapsible-card is-collapsed" id="eventFormCard">
             <div class="card-toggle-header" onclick="toggleEventForm()">
-                <div><h2 id="eventFormTitle">Markt / Ausstellung erfassen</h2></div>
+                <div><h2 id="eventFormTitle">Verkäufe erfassen</h2></div>
                 <button type="button" class="btn-collapse" onclick="toggleEventForm(event)"><span id="eventFormToggleLabel">Ausklappen</span><span id="eventFormToggleIcon">▼</span></button>
             </div>
             <div class="collapsible-body">
                 <div class="form-grid" style="margin-top: 20px;">
+                    <div class="form-group col-3">
+                        <label>Erfassungsart</label>
+                        <select id="eventTyp" onchange="updateEventTypeUI()">
+                            <option value="markt">Markt / Ausstellung</option>
+                            <option value="sonstige">Sonstige Verkäufe</option>
+                        </select>
+                    </div>
                     <div class="form-group col-2"><label>Datum</label><input type="date" id="eventDatum"></div>
-                    <div class="form-group col-5"><label>Markt / Ort</label><input type="text" id="eventName" placeholder="z.B. Koffermarkt Bern"></div>
-                    <div class="form-group col-5"><label>Bemerkungen</label><input type="text" id="eventOrt" placeholder="z.B. Schönes Wetter, viele Besucher"></div>
+                    <div class="form-group col-3" id="eventNameGroup"><label id="eventNameLabel">Markt / Ort</label><input type="text" id="eventName" placeholder="z.B. Koffermarkt Bern"></div>
+                    <div class="form-group col-4" id="eventOrtGroup"><label>Bemerkungen</label><input type="text" id="eventOrt" placeholder="z.B. Schönes Wetter, viele Besucher"></div>
                 </div>
                 <div class="table-container">
                     <table id="produkteEingabeTabelle">
@@ -307,23 +317,29 @@
             <div class="table-card-header">
                 <div>
                     <h2 style="margin-bottom: 8px;">Jahresübersicht <span id="loadingVerkaeufe" style="display:none;">Lade Daten...</span></h2>
-                    <div class="small-note">Manuelle Jahreswerte werden separat von den Event-Details gespeichert.</div>
-                </div>
-                <div class="event-form-actions" id="jahresuebersichtActions">
-                    <button class="btn-secondary" id="editJahresuebersichtBtn" onclick="bearbeiteJahresuebersicht()">Bearbeiten</button>
-                    <button class="btn-main" id="saveJahresuebersichtBtn" onclick="speichereJahresuebersicht()" style="display:none;">Jahresübersicht speichern</button>
-                    <button class="btn-secondary" id="cancelJahresuebersichtBtn" onclick="abbrechenJahresuebersichtBearbeitung()" style="display:none;">Abbrechen</button>
+                    <div class="small-note">Wird automatisch aus allen erfassten Verkäufen (Markt / Ausstellung + Sonstige Verkäufe) berechnet.</div>
                 </div>
             </div>
             <div class="table-container" style="margin-top: 15px;"><table class="matrix-table" id="matrixTabelle"><thead id="matrixHead"></thead><tbody id="matrixBody"></tbody><tfoot id="matrixFoot"></tfoot></table></div>
         </div>
-        <div class="card">
-            <div class="table-card-header"><h2 style="margin-bottom:0; display:flex; align-items:center;">Events im Detail <span class="summary-badge" id="eventsCountBadge">0 Events</span></h2></div>
-            <div class="table-container" style="margin-top: 15px;">
-                <table>
-                    <thead><tr><th>Datum</th><th>Markt / Ort</th><th>Bemerkungen</th><th class="center">Anzahl</th><th class="right">Umsatz (CHF)</th><th style="text-align:center;">Aktionen</th></tr></thead>
-                    <tbody id="eventListeBody"></tbody>
-                </table>
+        <div class="entry-type-grid">
+            <div class="card">
+                <div class="table-card-header"><h2 style="margin-bottom:0; display:flex; align-items:center;">Markt / Ausstellung <span class="summary-badge" id="marktCountBadge">0 Einträge</span></h2></div>
+                <div class="table-container" style="margin-top: 15px;">
+                    <table>
+                        <thead><tr><th>Datum</th><th>Markt / Ort</th><th>Bemerkungen</th><th class="center">Anzahl</th><th class="right">Umsatz (CHF)</th><th style="text-align:center;">Aktionen</th></tr></thead>
+                        <tbody id="marktListeBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card">
+                <div class="table-card-header"><h2 style="margin-bottom:0; display:flex; align-items:center;">Sonstige Verkäufe <span class="summary-badge" id="sonstigeCountBadge">0 Einträge</span></h2></div>
+                <div class="table-container" style="margin-top: 15px;">
+                    <table>
+                        <thead><tr><th>Datum</th><th>Beschreibung</th><th class="center">Anzahl</th><th class="right">Umsatz (CHF)</th><th style="text-align:center;">Aktionen</th></tr></thead>
+                        <tbody id="sonstigeListeBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -666,15 +682,11 @@
         const monateNamen = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 
         let unsubscribeVerkaeufe = null;
-        let unsubscribeJahresuebersicht = null;
         let unsubscribeAdressen = null;
         let unsubscribeDebitoren = null;
         let unsubscribeFerienwohnung = null;
 
         let verkaeufeDaten = [];
-        let jahresuebersichtDaten = null;
-        let jahresuebersichtOriginalDaten = null;
-        let jahresuebersichtBearbeiten = false;
         let adressenDaten = [];
         let adressenGeladen = false;
         let debitorenDaten = [];
@@ -714,50 +726,8 @@
             return parts.join('.');
         }
 
-        function cloneDeep(data) {
-            return JSON.parse(JSON.stringify(data));
-        }
-
-        function parseManualAnzahl(value) {
+        function parsePositiveAnzahl(value) {
             return Math.max(0, parseInt(String(value ?? '').trim(), 10) || 0);
-        }
-
-        function parseManualBetragToRappen(value) {
-            const normalized = String(value ?? '').replace(/'/g, '').replace('’', '').replace(',', '.').trim();
-            const amount = parseFloat(normalized);
-            return Math.max(0, Math.round((Number.isFinite(amount) ? amount : 0) * 100));
-        }
-
-        function formatBetragInput(rappen) {
-            return Number(rappen || 0) > 0 ? (Number(rappen || 0) / 100).toFixed(2) : '';
-        }
-
-        function createEmptyJahresuebersicht(year = document.getElementById('selectedYear')?.value || new Date().getFullYear().toString()) {
-            const monate = {};
-            for (let monat = 1; monat <= 12; monat += 1) {
-                monate[String(monat)] = { produkte: {} };
-                produkte.forEach(produkt => {
-                    monate[String(monat)].produkte[produkt] = { anzahl: 0, betrag_rappen: 0 };
-                });
-            }
-            return { jahr: String(year), monate };
-        }
-
-        function normalisiereJahresuebersicht(data, year = document.getElementById('selectedYear')?.value || new Date().getFullYear().toString()) {
-            const basis = createEmptyJahresuebersicht(year);
-            const rawMonate = data?.monate || {};
-            for (let monat = 1; monat <= 12; monat += 1) {
-                const rawMonat = rawMonate[String(monat)] || rawMonate[monat] || {};
-                const rawProdukte = rawMonat.produkte || {};
-                produkte.forEach(produkt => {
-                    const rawProdukt = rawProdukte[produkt] || {};
-                    basis.monate[String(monat)].produkte[produkt] = {
-                        anzahl: parseManualAnzahl(rawProdukt.anzahl),
-                        betrag_rappen: Math.max(0, Math.round(Number(rawProdukt.betrag_rappen || 0)))
-                    };
-                });
-            }
-            return basis;
         }
 
         function berechneJahresuebersichtSummen() {
@@ -771,27 +741,31 @@
                 const monatKey = String(monat);
                 matrix[monatKey] = { anzahl: 0, betrag: 0, produkte: {} };
                 produkte.forEach(produkt => {
-                    const data = jahresuebersichtDaten?.monate?.[monatKey]?.produkte?.[produkt] || { anzahl: 0, betrag_rappen: 0 };
-                    const anzahl = parseManualAnzahl(data.anzahl);
-                    const betrag = Math.max(0, Math.round(Number(data.betrag_rappen || 0)));
-                    matrix[monatKey].produkte[produkt] = { anzahl, betrag };
-                    matrix[monatKey].anzahl += anzahl;
-                    matrix[monatKey].betrag += betrag;
-                    jahresTotals.produkte[produkt].anzahl += anzahl;
-                    jahresTotals.produkte[produkt].betrag += betrag;
-                    jahresTotals.anzahl += anzahl;
-                    jahresTotals.betrag += betrag;
+                    matrix[monatKey].produkte[produkt] = { anzahl: 0, betrag: 0 };
                 });
             }
 
-            return { matrix, jahresTotals };
-        }
+            verkaeufeDaten.forEach((eintrag) => {
+                const monat = parseInt(String(eintrag.datum || '').split('-')[1], 10);
+                if (!monat || monat < 1 || monat > 12) return;
+                const monatKey = String(monat);
+                (eintrag.produkte || []).forEach((produktDaten) => {
+                    const produktName = produktDaten.name;
+                    if (!jahresTotals.produkte[produktName]) return;
+                    const anzahl = parsePositiveAnzahl(produktDaten.anzahl);
+                    const betrag = Math.max(0, Math.round(Number(produktDaten.betrag_rappen || 0)));
+                    matrix[monatKey].produkte[produktName].anzahl += anzahl;
+                    matrix[monatKey].produkte[produktName].betrag += betrag;
+                    matrix[monatKey].anzahl += anzahl;
+                    matrix[monatKey].betrag += betrag;
+                    jahresTotals.produkte[produktName].anzahl += anzahl;
+                    jahresTotals.produkte[produktName].betrag += betrag;
+                    jahresTotals.anzahl += anzahl;
+                    jahresTotals.betrag += betrag;
+                });
+            });
 
-        function setJahresuebersichtMode() {
-            const editing = !!jahresuebersichtBearbeiten;
-            document.getElementById('editJahresuebersichtBtn').style.display = editing ? 'none' : 'inline-flex';
-            document.getElementById('saveJahresuebersichtBtn').style.display = editing ? 'inline-flex' : 'none';
-            document.getElementById('cancelJahresuebersichtBtn').style.display = editing ? 'inline-flex' : 'none';
+            return { matrix, jahresTotals };
         }
 
         function escapeHtml(text) {
@@ -874,11 +848,6 @@
             document.getElementById('debitorDatum').min = start;
             document.getElementById('debitorDatum').max = `${year}-12-31`;
 
-            jahresuebersichtBearbeiten = false;
-            jahresuebersichtDaten = createEmptyJahresuebersicht(year);
-            jahresuebersichtOriginalDaten = cloneDeep(jahresuebersichtDaten);
-            setJahresuebersichtMode();
-            
             resetEventForm({ collapse: true, preserveDate: true });
             resetDebitorForm({ collapse: true, preserveDate: true });
             
@@ -902,7 +871,6 @@
 
             baueMatrixHeader();
             setEventFormMode();
-            setJahresuebersichtMode();
             setAdressFormMode();
             setDebitorFormMode();
             updateAdressSortIcons();
@@ -938,10 +906,27 @@
         // =========================================================================
         // BEREICH: VERKÄUFE
         // =========================================================================
+        window.updateEventTypeUI = () => {
+            const typ = document.getElementById('eventTyp').value;
+            const isMarkt = typ === 'markt';
+            const nameLabel = document.getElementById('eventNameLabel');
+            const nameInput = document.getElementById('eventName');
+            const ortInput = document.getElementById('eventOrt');
+            const ortGroup = document.getElementById('eventOrtGroup');
+            nameLabel.innerText = isMarkt ? 'Markt / Ort' : 'Beschreibung';
+            nameInput.placeholder = isMarkt ? 'z.B. Koffermarkt Bern' : 'z.B. Verkauf ab Atelier / Online';
+            ortInput.placeholder = 'z.B. Schönes Wetter, viele Besucher';
+            ortGroup.classList.toggle('event-ort-hidden', !isMarkt);
+            if (!isMarkt) ortInput.value = '';
+            setEventFormMode();
+        };
+
         function setEventFormMode() {
             const editing = !!bearbeitungsEventId;
-            document.getElementById('eventFormTitle').innerText = editing ? 'Markt / Ausstellung bearbeiten' : 'Markt / Ausstellung erfassen';
-            document.getElementById('saveEventBtn').innerText = editing ? 'Änderungen speichern' : 'Event speichern';
+            const typ = document.getElementById('eventTyp').value;
+            const typLabel = typ === 'markt' ? 'Markt / Ausstellung' : 'Sonstige Verkäufe';
+            document.getElementById('eventFormTitle').innerText = editing ? `${typLabel} bearbeiten` : 'Verkäufe erfassen';
+            document.getElementById('saveEventBtn').innerText = editing ? 'Änderungen speichern' : 'Verkauf speichern';
             document.getElementById('cancelEventBtn').style.display = editing ? 'inline-flex' : 'none';
         }
 
@@ -957,16 +942,19 @@
             const existingDate = document.getElementById('eventDatum').value;
             const yearStart = `${document.getElementById('selectedYear').value}-01-01`;
             bearbeitungsEventId = null;
+            document.getElementById('eventTyp').value = 'markt';
             document.getElementById('eventDatum').value = preserveDate && existingDate ? existingDate : yearStart;
             document.getElementById('eventName').value = '';
             document.getElementById('eventOrt').value = '';
             document.querySelectorAll('.anzahl-input, .betrag-input').forEach(input => input.value = '');
             berechneEingabeTotal();
+            updateEventTypeUI();
             setEventFormMode();
             if (collapse) toggleEventForm(false);
         }
 
         function fuelleEventForm(event) {
+            document.getElementById('eventTyp').value = event.typ === 'sonstige' ? 'sonstige' : 'markt';
             document.getElementById('eventDatum').value = event.datum || '';
             document.getElementById('eventName').value = event.event_name || '';
             document.getElementById('eventOrt').value = event.ort || '';
@@ -981,6 +969,7 @@
                 }
             });
             berechneEingabeTotal();
+            updateEventTypeUI();
         }
 
         function berechneEventSummen(event) {
@@ -1022,10 +1011,11 @@
         };
 
         window.speichereEvent = async () => {
+            const typ = document.getElementById('eventTyp').value;
             const datum = document.getElementById('eventDatum').value;
             const eventName = document.getElementById('eventName').value.trim();
             const ort = document.getElementById('eventOrt').value.trim();
-            if (!datum || !eventName) return showToast('Datum und Eventname sind Pflichtfelder.', 'warning');
+            if (!datum || !eventName) return showToast('Datum und Bezeichnung sind Pflichtfelder.', 'warning');
 
             const eventProdukte = [];
             const anzahlInputs = document.querySelectorAll('.anzahl-input');
@@ -1039,7 +1029,7 @@
             }
             if (eventProdukte.length === 0) return showToast('Bitte trage mindestens bei einem Produkt Werte ein.', 'warning');
 
-            const payload = { datum, event_name: eventName, ort, produkte: eventProdukte };
+            const payload = { typ, datum, event_name: eventName, ort: typ === 'markt' ? ort : '', produkte: eventProdukte };
             try {
                 if (bearbeitungsEventId) {
                     await updateDoc(doc(db, 'verkaeufe_events', bearbeitungsEventId), payload);
@@ -1055,16 +1045,17 @@
         };
 
         function renderEventListe() {
-            const tbody = document.getElementById('eventListeBody');
             const daten = [...verkaeufeDaten].sort((a, b) => (b.datum || '').localeCompare(a.datum || '') || normText(a.event_name).localeCompare(normText(b.event_name), 'de-CH'));
-            document.getElementById('eventsCountBadge').innerText = `${daten.length} ${daten.length === 1 ? 'Event' : 'Events'}`;
+            const marktDaten = daten.filter(event => (event.typ || 'markt') === 'markt');
+            const sonstigeDaten = daten.filter(event => (event.typ || 'markt') === 'sonstige');
+            document.getElementById('marktCountBadge').innerText = `${marktDaten.length} ${marktDaten.length === 1 ? 'Eintrag' : 'Einträge'}`;
+            document.getElementById('sonstigeCountBadge').innerText = `${sonstigeDaten.length} ${sonstigeDaten.length === 1 ? 'Eintrag' : 'Einträge'}`;
 
-            if (daten.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="center muted" style="padding: 20px;">Für dieses Jahr sind noch keine Events erfasst.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = daten.map(event => {
+            const baueZeilen = (liste, isSonstige = false) => {
+                if (liste.length === 0) {
+                    return `<tr><td colspan="${isSonstige ? 5 : 6}" class="center muted" style="padding: 20px;">Für dieses Jahr sind noch keine ${isSonstige ? 'sonstigen Verkäufe' : 'Markt-/Ausstellungs-Einträge'} erfasst.</td></tr>`;
+                }
+                return liste.map(event => {
                 const totals = berechneEventSummen(event);
                 const details = (event.produkte || []).map(p => `
                     <div class="event-detail-pill">
@@ -1077,7 +1068,7 @@
                     <tr>
                         <td>${formatDatumCH(event.datum)}</td>
                         <td>${escapeHtml(event.event_name || '')}</td>
-                        <td>${escapeHtml(event.ort || '')}</td>
+                        ${isSonstige ? '' : `<td>${escapeHtml(event.ort || '')}</td>`}
                         <td class="center">${totals.anzahl}</td>
                         <td class="right chf">${formatCHF(totals.betrag)}</td>
                         <td class="center">
@@ -1088,9 +1079,13 @@
                             </div>
                         </td>
                     </tr>
-                    <tr id="eventDetails_${event.id}" class="details-row" style="display:none;"><td colspan="6"><div class="event-details-grid">${details || '<div class="muted">Keine Produktdetails vorhanden.</div>'}</div></td></tr>
+                    <tr id="eventDetails_${event.id}" class="details-row" style="display:none;"><td colspan="${isSonstige ? 5 : 6}"><div class="event-details-grid">${details || '<div class="muted">Keine Produktdetails vorhanden.</div>'}</div></td></tr>
                 `;
-            }).join('');
+                }).join('');
+            };
+
+            document.getElementById('marktListeBody').innerHTML = baueZeilen(marktDaten);
+            document.getElementById('sonstigeListeBody').innerHTML = baueZeilen(sonstigeDaten, true);
         }
 
         // =========================================================================
@@ -1843,22 +1838,6 @@
                 document.getElementById('loadingVerkaeufe').style.display = 'none';
                 verkaeufeDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderEventListe();
-            });
-
-            if (unsubscribeJahresuebersicht) unsubscribeJahresuebersicht();
-            const jahresDocRef = doc(db, 'verkaeufe_jahresuebersicht', year);
-            unsubscribeJahresuebersicht = onSnapshot(jahresDocRef, (snap) => {
-                const daten = snap.exists() ? normalisiereJahresuebersicht(snap.data(), year) : createEmptyJahresuebersicht(year);
-                jahresuebersichtOriginalDaten = cloneDeep(daten);
-                jahresuebersichtDaten = cloneDeep(daten);
-                jahresuebersichtBearbeiten = false;
-                setJahresuebersichtMode();
-                renderMatrix();
-            }, () => {
-                jahresuebersichtOriginalDaten = createEmptyJahresuebersicht(year);
-                jahresuebersichtDaten = cloneDeep(jahresuebersichtOriginalDaten);
-                jahresuebersichtBearbeiten = false;
-                setJahresuebersichtMode();
                 renderMatrix();
             });
         }
@@ -1875,10 +1854,6 @@
         }
 
         function renderMatrix() {
-            if (!jahresuebersichtDaten) {
-                jahresuebersichtDaten = createEmptyJahresuebersicht();
-            }
-
             const { matrix, jahresTotals } = berechneJahresuebersichtSummen();
             const tbody = document.getElementById('matrixBody');
             tbody.innerHTML = '';
@@ -1888,14 +1863,7 @@
                 let row = `<tr><td>${monateNamen[monat - 1]}</td>`;
                 produkte.forEach((produkt, produktIndex) => {
                     const data = matrix[monatKey].produkte[produkt];
-                    if (jahresuebersichtBearbeiten) {
-                        row += `
-                            <td class="center col-border"><input type="number" class="tbl-input" min="0" step="1" value="${data.anzahl || ''}" oninput="updateJahresuebersichtCell(${monat}, ${produktIndex}, 'anzahl', this.value)"></td>
-                            <td class="right chf"><input type="number" class="tbl-input" min="0" step="0.01" value="${formatBetragInput(data.betrag)}" oninput="updateJahresuebersichtCell(${monat}, ${produktIndex}, 'betrag', this.value)"></td>
-                        `;
-                    } else {
-                        row += `<td class="center col-border">${data.anzahl > 0 ? data.anzahl : '-'}</td><td class="right chf">${data.betrag > 0 ? formatCHF(data.betrag) : ''}</td>`;
-                    }
+                    row += `<td class="center col-border">${data.anzahl > 0 ? data.anzahl : '-'}</td><td class="right chf">${data.betrag > 0 ? formatCHF(data.betrag) : ''}</td>`;
                 });
                 row += `<td class="center col-border col-total" id="monat_total_anzahl_${monat}">${matrix[monatKey].anzahl > 0 ? matrix[monatKey].anzahl : '-'}</td><td class="right chf col-total" id="monat_total_betrag_${monat}">${matrix[monatKey].betrag > 0 ? formatCHF(matrix[monatKey].betrag) : '-'}</td></tr>`;
                 tbody.innerHTML += row;
@@ -1908,87 +1876,6 @@
             });
             footer += `<td class="center col-border col-total" style="color: var(--primary);" id="jahr_total_gesamt_anzahl">${jahresTotals.anzahl > 0 ? jahresTotals.anzahl : '-'}</td><td class="right chf col-total" style="color: var(--primary); font-size: 1.1em;" id="jahr_total_gesamt_betrag">${jahresTotals.betrag > 0 ? formatCHF(jahresTotals.betrag) : '-'}</td></tr>`;
             document.getElementById('matrixFoot').innerHTML = footer;
-            setJahresuebersichtMode();
-        }
-
-        function updateJahresuebersichtTotalsInDom() {
-            const { matrix, jahresTotals } = berechneJahresuebersichtSummen();
-            for (let monat = 1; monat <= 12; monat += 1) {
-                const monatKey = String(monat);
-                const anzahlEl = document.getElementById(`monat_total_anzahl_${monat}`);
-                const betragEl = document.getElementById(`monat_total_betrag_${monat}`);
-                if (anzahlEl) anzahlEl.innerText = matrix[monatKey].anzahl > 0 ? matrix[monatKey].anzahl : '-';
-                if (betragEl) betragEl.innerText = matrix[monatKey].betrag > 0 ? formatCHF(matrix[monatKey].betrag) : '-';
-            }
-            produkte.forEach((produkt, produktIndex) => {
-                const total = jahresTotals.produkte[produkt];
-                const anzahlEl = document.getElementById(`jahr_total_anzahl_${produktIndex}`);
-                const betragEl = document.getElementById(`jahr_total_betrag_${produktIndex}`);
-                if (anzahlEl) anzahlEl.innerText = total.anzahl > 0 ? total.anzahl : '-';
-                if (betragEl) betragEl.innerText = total.betrag > 0 ? formatCHF(total.betrag) : '';
-            });
-            const gesamtAnzahlEl = document.getElementById('jahr_total_gesamt_anzahl');
-            const gesamtBetragEl = document.getElementById('jahr_total_gesamt_betrag');
-            if (gesamtAnzahlEl) gesamtAnzahlEl.innerText = jahresTotals.anzahl > 0 ? jahresTotals.anzahl : '-';
-            if (gesamtBetragEl) gesamtBetragEl.innerText = jahresTotals.betrag > 0 ? formatCHF(jahresTotals.betrag) : '-';
-        }
-
-        window.bearbeiteJahresuebersicht = () => {
-            jahresuebersichtDaten = cloneDeep(jahresuebersichtOriginalDaten || createEmptyJahresuebersicht());
-            jahresuebersichtBearbeiten = true;
-            renderMatrix();
-        };
-
-        window.abbrechenJahresuebersichtBearbeitung = () => {
-            jahresuebersichtDaten = cloneDeep(jahresuebersichtOriginalDaten || createEmptyJahresuebersicht());
-            jahresuebersichtBearbeiten = false;
-            renderMatrix();
-        };
-
-        window.updateJahresuebersichtCell = (monat, produktIndex, feld, rawValue) => {
-            const monatKey = String(monat);
-            const produkt = produkte[produktIndex];
-            if (!produkt) return;
-            if (!jahresuebersichtDaten?.monate?.[monatKey]?.produkte?.[produkt]) return;
-
-            if (feld === 'anzahl') {
-                jahresuebersichtDaten.monate[monatKey].produkte[produkt].anzahl = parseManualAnzahl(rawValue);
-            } else {
-                jahresuebersichtDaten.monate[monatKey].produkte[produkt].betrag_rappen = parseManualBetragToRappen(rawValue);
-            }
-            updateJahresuebersichtTotalsInDom();
-        };
-
-        window.speichereJahresuebersicht = async () => {
-            const year = document.getElementById('selectedYear').value;
-            const monate = {};
-            for (let monat = 1; monat <= 12; monat += 1) {
-                const monatKey = String(monat);
-                monate[monatKey] = { produkte: {} };
-                produkte.forEach(produkt => {
-                    const data = jahresuebersichtDaten?.monate?.[monatKey]?.produkte?.[produkt] || { anzahl: 0, betrag_rappen: 0 };
-                    monate[monatKey].produkte[produkt] = {
-                        anzahl: parseManualAnzahl(data.anzahl),
-                        betrag_rappen: Math.max(0, Math.round(Number(data.betrag_rappen || 0)))
-                    };
-                });
-            }
-
-            try {
-                await setDoc(doc(db, 'verkaeufe_jahresuebersicht', year), {
-                    jahr: year,
-                    monate,
-                    aktualisiert_am: serverTimestamp()
-                });
-                jahresuebersichtOriginalDaten = cloneDeep({ jahr: year, monate });
-                jahresuebersichtDaten = cloneDeep(jahresuebersichtOriginalDaten);
-                jahresuebersichtBearbeiten = false;
-                renderMatrix();
-                showToast('Jahresübersicht erfolgreich gespeichert.', 'success');
-            } catch (error) {
-                console.error(error);
-                showToast('Fehler beim Speichern der Jahresübersicht.', 'error');
-            }
         };
 
         let dupConflictGroups = [];
