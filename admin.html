@@ -159,6 +159,7 @@
             <span>bis</span>
             <input type="date" id="dateBis" class="date-input">
             <button class="filter-btn" onclick="window.resetDates()" style="background: #f1f5f9; color: #64748b;">Datum zurücksetzen</button>
+            <button class="filter-btn" onclick="window.refreshLogs()" style="background: #e8f5e9; color: #2e7d32;">🔄 Jetzt aktualisieren</button>
         </div>
     </div>
 
@@ -182,7 +183,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-    import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, getDoc, setDoc, deleteDoc, where, Timestamp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+    import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, deleteDoc, where, Timestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -198,8 +199,16 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    enableIndexedDbPersistence(db).catch((err) => {
+        if (err.code === 'failed-precondition') {
+            console.warn('Mehrere Tabs offen. Offline-Cache funktioniert am besten in einem einzigen Tab.');
+        } else if (err.code === 'unimplemented') {
+            console.warn('Der aktuelle Browser unterstützt kein Caching.');
+        }
+    });
+
     let currentFilter = "all";
-    let unsubscribeLogs = null;
+    let refreshIntervalId = null;
 
     onAuthStateChanged(auth, (user) => {
         if (!user) window.location.href = "index.html";
@@ -212,28 +221,30 @@
                 document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 currentFilter = e.target.getAttribute('data-filter');
-                startLogListener();
+                loadLogs();
             };
         });
 
-        document.getElementById('dateVon').onchange = startLogListener;
-        document.getElementById('dateBis').onchange = startLogListener;
-        
+        document.getElementById('dateVon').onchange = loadLogs;
+        document.getElementById('dateBis').onchange = loadLogs;
+
         window.resetDates = () => {
             document.getElementById('dateVon').value = '';
             document.getElementById('dateBis').value = '';
-            startLogListener();
+            loadLogs();
         };
 
-        startLogListener();
+        window.refreshLogs = () => loadLogs();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        loadLogs();
+        startAutoRefresh();
     }
 
-    function startLogListener() {
-        if (unsubscribeLogs) unsubscribeLogs();
-        
+    function buildLogsQuery() {
         const von = document.getElementById('dateVon').value;
         const bis = document.getElementById('dateBis').value;
-        
+
         let conditions = [orderBy("timestamp", "desc"), limit(100)];
         
         if (currentFilter !== "all") {
@@ -249,16 +260,46 @@
             conditions.unshift(where("timestamp", "<=", Timestamp.fromDate(endOfDay)));
         }
 
-        const q = query(collection(db, "audit_logs"), ...conditions);
-        
-        unsubscribeLogs = onSnapshot(q, (snapshot) => {
+        return query(collection(db, "audit_logs"), ...conditions);
+    }
+
+    async function loadLogs() {
+        if (document.hidden) return;
+        const tbody = document.getElementById('logBody');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px;">Lade Logs...</td></tr>';
+        try {
+            const snapshot = await getDocs(buildLogsQuery());
             renderTable(snapshot);
-        }, (error) => {
+        } catch (error) {
             console.error("Firestore Error:", error);
-            if (error.message.includes("index")) {
+            if (String(error.message || '').includes("index")) {
                 alert("Bitte erstelle den erforderlichen Index in der Firebase Console. Ein Link dazu sollte in der Browser-Konsole (F12) stehen.");
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color:#b42318;">Fehler beim Laden der Logs.</td></tr>';
             }
-        });
+        }
+    }
+
+    function startAutoRefresh() {
+        if (refreshIntervalId) window.clearInterval(refreshIntervalId);
+        refreshIntervalId = window.setInterval(() => {
+            if (!document.hidden) loadLogs();
+        }, 60000);
+    }
+
+    function stopAutoRefresh() {
+        if (!refreshIntervalId) return;
+        window.clearInterval(refreshIntervalId);
+        refreshIntervalId = null;
+    }
+
+    function handleVisibilityChange() {
+        if (document.hidden) {
+            stopAutoRefresh();
+            return;
+        }
+        loadLogs();
+        startAutoRefresh();
     }
 
     // Hilfsfunktion: Formatiert Rappen in CHF

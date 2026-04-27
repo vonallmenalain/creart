@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verwaltung - CreArt & Ferienwohnung</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
+
     <style>
         :root {
             --primary: #2980b9;
@@ -231,31 +231,31 @@
             body { padding: 10px; }
             .card, .collapsible-body, .modal-content, .admin-controls, .login-card { padding: 15px; }
             .modal-content { width: 92%; margin: 10% auto; padding: 20px; }
-            
+
             /* Header & Navigation flexibel stapeln */
             .app-header, header { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; }
             .header-controls { flex-direction: column; width: 100%; gap: 10px; }
             .btn-switch, .btn-toggle-view { width: 100%; text-align: center; box-sizing: border-box; }
-            
+
             /* Tabs horizontal scrollbar machen anstatt sie unschön umzubrechen */
             .nav-tabs { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: none; padding-bottom: 5px; gap: 8px;}
             .tab-btn { white-space: nowrap; flex-shrink: 0; font-size: 0.95em; padding: 12px 18px; border-radius: 8px; margin: 0; border: 1px solid #ddd; }
             .tab-btn.active { border: 2px solid var(--primary); }
-            
+
             /* Formular-Grid auflösen -> Alles untereinander anordnen */
             .form-grid { display: flex !important; flex-direction: column; gap: 15px; }
             .form-group, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-12 { width: 100%; }
-            
+
             /* Filter-Leisten & Suchfelder anpassen */
             .global-filter-bar, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; gap: 15px; }
             .filter-inline, .date-range-container { flex-direction: column; align-items: stretch; width: 100%; gap: 10px;}
             .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
             .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
-            
+
             /* Buttons auf volle Breite ziehen (Daumen-freundlich) */
             .btn-main, .btn-cancel, .btn-reset, .btn-secondary, .event-form-actions button { width: 100% !important; margin-bottom: 5px; box-sizing: border-box; }
             .event-form-actions { flex-direction: column; width: 100%; gap: 10px; }
-            
+
             /* Report-Grids (ER / Bilanz) & Admin Diffs untereinander */
             .report-grid, .diff-grid { grid-template-columns: 1fr; gap: 30px; }
             .fw-summary-dashboard { grid-template-columns: 1fr; }
@@ -263,14 +263,14 @@
             .entry-type-grid { grid-template-columns: 1fr; }
             .matrix-filter-btn { min-width: 100%; width: 100%; }
             .matrix-filter-dropdown { min-width: 100%; max-width: 100%; left: 0; right: auto; }
-            
+
             /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
-            .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
-            
+            .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; }
+
             /* Admin-Tool spezifisch */
             .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
             .filter-row .filter-btn { width: 100%; text-align: center; }
-            
+
             /* Login spezifisch */
             .checkbox-group { align-items: flex-start; }
             .checkbox-group input { margin-top: 4px; }
@@ -280,7 +280,7 @@
 <body>
 
     <div class="app-header">
-        <h1 class="app-title">Verwaltung & Verkauf 
+        <h1 class="app-title">Verwaltung & Verkauf
             <select id="selectedYear" class="year-select-title" onchange="changeYear()">
                 <option value="2026" selected>2026</option>
                 <option value="2027">2027</option>
@@ -630,7 +630,7 @@
                 </span>
             </h2>
             <p style="color: var(--secondary); margin-bottom: 20px;">Filtere die Liste und wähle die gewünschten Adressen aus. Du kannst verschiedene Filter kombinieren und fortlaufend Adressen zu deiner Auswahl hinzufügen.</p>
-            
+
             <div class="form-grid" style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
                 <div class="form-group col-3">
                     <label>PLZ von</label>
@@ -719,6 +719,23 @@
         let unsubscribeDebitoren = null;
         let unsubscribeFerienwohnung = null;
 
+        function stopRealtimeSubscriptions() {
+            if (unsubscribeVerkaeufe) { unsubscribeVerkaeufe(); unsubscribeVerkaeufe = null; }
+            if (unsubscribeAdressen) { unsubscribeAdressen(); unsubscribeAdressen = null; }
+            if (unsubscribeDebitoren) { unsubscribeDebitoren(); unsubscribeDebitoren = null; }
+            if (unsubscribeFerienwohnung) { unsubscribeFerienwohnung(); unsubscribeFerienwohnung = null; }
+        }
+
+        function handleVisibilityChange() {
+            if (document.hidden) {
+                stopRealtimeSubscriptions();
+                return;
+            }
+            changeYear();
+            ladeAdressen();
+            ladeDebitoren();
+        }
+
         let verkaeufeDaten = [];
         let matrixFilterState = { sonstigeAktiv: true, marktNamen: [], ausgewaehlteMaerkte: new Set() };
         let adressenDaten = [];
@@ -731,14 +748,15 @@
         let bearbeitungsDebitorId = null;
         let bearbeitungsFwId = null;
 
-        let adressSortierung = { spalte: 'rechnungsdatum', richtung: 'desc' }; 
-        let debitorSortierung = { spalte: 'nummer', richtung: 'desc' }; 
+        let adressSortierung = { spalte: 'rechnungsdatum', richtung: 'desc' };
+        let debitorSortierung = { spalte: 'nummer', richtung: 'desc' };
         let exportSort = { spalte: 'nachname', richtung: 'asc' }; // Sortierung fürs Export-Fenster
         let exportSelection = new Set(); // Speichert die IDs der zu exportierenden Adressen
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 init();
+                document.addEventListener('visibilitychange', handleVisibilityChange);
             } else {
                 window.location.href = "index.html";
             }
@@ -908,14 +926,14 @@
             const year = document.getElementById('selectedYear').value;
             const currentYear = new Date().getFullYear().toString();
             const today = new Date().toISOString().split('T')[0];
-            
+
             const start = `${year}-01-01`;
             const defaultDate = (year === currentYear) ? today : start;
 
             document.getElementById('eventDatum').value = start;
             document.getElementById('eventDatum').min = start;
             document.getElementById('eventDatum').max = `${year}-12-31`;
-            
+
             document.getElementById('debitorDatum').value = defaultDate;
             document.getElementById('debitorDatum').min = start;
             document.getElementById('debitorDatum').max = `${year}-12-31`;
@@ -923,7 +941,7 @@
             matrixFilterState = { sonstigeAktiv: true, marktNamen: [], ausgewaehlteMaerkte: new Set() };
             resetEventForm({ collapse: true, preserveDate: true });
             resetDebitorForm({ collapse: true, preserveDate: true });
-            
+
             ladeVerkaeufe();
             ladeFerienwohnung();
         };
@@ -1300,7 +1318,7 @@
                 ort: document.getElementById('kundeOrt').value.trim(),
                 produkte: document.getElementById('kundeProdukte').value.trim()
             };
-            
+
             try {
                 if (bearbeitungsAdresseId) {
                     await updateDoc(doc(db, 'kunden_adressen', bearbeitungsAdresseId), payload);
@@ -1437,6 +1455,10 @@
         }
 
         function ladeAdressen() {
+            if (document.hidden) {
+                if (unsubscribeAdressen) { unsubscribeAdressen(); unsubscribeAdressen = null; }
+                return;
+            }
             if (unsubscribeAdressen) unsubscribeAdressen();
             adressenGeladen = false;
             unsubscribeAdressen = onSnapshot(collection(db, 'kunden_adressen'), async (snap) => {
@@ -1469,7 +1491,7 @@
         // =========================================================================
         // EXPORT LOGIK FÜR ADRESSEN (ERWEITERT)
         // =========================================================================
-        
+
         window.sortExportPreview = (spalte) => {
             if (exportSort.spalte === spalte) {
                 exportSort.richtung = exportSort.richtung === 'asc' ? 'desc' : 'asc';
@@ -1500,7 +1522,7 @@
                 const plzList = plzListFilter.split(',').map(s => s.trim().toLowerCase());
                 filtered = filtered.filter(a => plzList.includes((a.plz || '').toLowerCase()));
             }
-            
+
             // Listen Filter Ort
             if (ortListFilter) {
                 const ortList = ortListFilter.split(',').map(s => s.trim().toLowerCase());
@@ -1512,14 +1534,14 @@
                 filtered.sort((a, b) => {
                     const valA = normText(a[exportSort.spalte]);
                     const valB = normText(b[exportSort.spalte]);
-                    
+
                     // Numerische Sortierung für PLZ
                     if (exportSort.spalte === 'plz') {
                         const numA = parseInt(valA) || 0;
                         const numB = parseInt(valB) || 0;
                         return exportSort.richtung === 'asc' ? numA - numB : numB - numA;
                     }
-                    
+
                     // Alphabetische Sortierung
                     if (valA < valB) return exportSort.richtung === 'asc' ? -1 : 1;
                     if (valA > valB) return exportSort.richtung === 'asc' ? 1 : -1;
@@ -1568,7 +1590,7 @@
         window.renderExportPreview = () => {
             const filtered = getFilteredExportData();
             const tbody = document.getElementById('exportPreviewBody');
-            
+
             // Sortier-Icons aktualisieren
             document.querySelectorAll('[id^="sort_exp_"]').forEach(el => el.innerText = '');
             if (exportSort.spalte) {
@@ -1585,8 +1607,8 @@
                     return `
                         <tr style="background: ${rowBg}; transition: 0.2s;">
                             <td class="center">
-                                <input type="checkbox" style="transform: scale(1.3); cursor: pointer;" 
-                                       ${isSelected ? 'checked' : ''} 
+                                <input type="checkbox" style="transform: scale(1.3); cursor: pointer;"
+                                       ${isSelected ? 'checked' : ''}
                                        onchange="toggleExportItem('${a.id}')">
                             </td>
                             <td>${escapeHtml(a.vorname)}</td>
@@ -1624,10 +1646,10 @@
                 const worksheet = XLSX.utils.json_to_sheet(exportData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Adressen");
-                
+
                 const today = new Date().toISOString().split('T')[0];
                 XLSX.writeFile(workbook, `Adressen_Export_${today}.xlsx`);
-                
+
                 closeExportModal();
             } catch (e) {
                 console.error("Fehler beim Erstellen der Excel-Datei:", e);
@@ -1717,10 +1739,10 @@
             document.getElementById('debitorBezahlt').value = debitor.bezahlt_status || 'Nein';
             document.getElementById('debitorMahnung').value = debitor.mahnung || '';
             document.getElementById('debitorProdukte').value = debitor.produkte || '';
-            
+
             const kunde = adressenDaten.find(a => a.id === debitor.kunde_id);
             document.getElementById('debitorKundenSuche').value = kunde ? `${kunde.kundennummer || ''} ${getCustomerDisplayName(kunde)}`.trim() : '';
-            
+
             updateDebitorKundenStatus();
             renderDebitorKundenTreffer();
         }
@@ -1959,6 +1981,10 @@
         }
 
         function ladeDebitoren() {
+            if (document.hidden) {
+                if (unsubscribeDebitoren) { unsubscribeDebitoren(); unsubscribeDebitoren = null; }
+                return;
+            }
             if (unsubscribeDebitoren) unsubscribeDebitoren();
             unsubscribeDebitoren = onSnapshot(collection(db, 'debitoren'), async (snap) => {
                 debitorenDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1969,6 +1995,10 @@
         }
 
         function ladeVerkaeufe() {
+            if (document.hidden) {
+                if (unsubscribeVerkaeufe) { unsubscribeVerkaeufe(); unsubscribeVerkaeufe = null; }
+                return;
+            }
             const year = document.getElementById('selectedYear').value;
             document.getElementById('loadingVerkaeufe').style.display = 'inline';
 
@@ -2391,13 +2421,13 @@
             document.getElementById('fwKinder').value = buchung.kinder || 0;
             document.getElementById('fwAnbieter').value = buchung.anbieter || '';
             document.getElementById('fwBuchungsdatum').value = buchung.buchungsdatum || '';
-            
+
             document.getElementById('fwReinigung').value = buchung.reinigung_rappen ? (buchung.reinigung_rappen / 100).toFixed(2) : '';
             document.getElementById('fwKurtaxe').value = buchung.kurtaxe_rappen ? (buchung.kurtaxe_rappen / 100).toFixed(2) : '';
             document.getElementById('fwPreis').value = buchung.preis_rappen ? (buchung.preis_rappen / 100).toFixed(2) : '';
             document.getElementById('fwNetto').value = buchung.netto_rappen ? (buchung.netto_rappen / 100).toFixed(2) : '';
             document.getElementById('fwAnzahlung').value = buchung.anzahlung_rappen ? (buchung.anzahlung_rappen / 100).toFixed(2) : '';
-            
+
             document.getElementById('fwBezahlt').value = buchung.bezahlt || 'Nein';
             document.getElementById('fwBemerkungen').value = buchung.bemerkungen || '';
         }
@@ -2408,7 +2438,7 @@
             const datum_von = document.getElementById('fwDatumVon').value;
             const datum_bis = document.getElementById('fwDatumBis').value;
             const name = document.getElementById('fwName').value.trim();
-            
+
             if (!datum_von || !datum_bis || !name) {
                 return showToast('Bitte fülle mindestens Datum von, Datum bis und den Namen aus.', 'warning');
             }
@@ -2505,7 +2535,7 @@
                 sumNetto += (b.netto_rappen || 0);
                 sumKurtaxe += (b.kurtaxe_rappen || 0);
             });
-            
+
             document.getElementById('fwSumPreis').innerText = `CHF ${formatCHF(sumPreis)}`;
             document.getElementById('fwSumNetto').innerText = `CHF ${formatCHF(sumNetto)}`;
             document.getElementById('fwSumKurtaxe').innerText = `CHF ${formatCHF(sumKurtaxe)}`;
@@ -2563,12 +2593,16 @@
         };
 
         function ladeFerienwohnung() {
+            if (document.hidden) {
+                if (unsubscribeFerienwohnung) { unsubscribeFerienwohnung(); unsubscribeFerienwohnung = null; }
+                return;
+            }
             const year = document.getElementById('selectedYear').value;
             if (unsubscribeFerienwohnung) unsubscribeFerienwohnung();
-            
+
             // Lade alle Buchungen für das selektierte Jahr
             const q = query(collection(db, 'ferienwohnung_buchungen'), where('datum_von', '>=', `${year}-01-01`), where('datum_von', '<=', `${year}-12-31`));
-            
+
             unsubscribeFerienwohnung = onSnapshot(q, (snap) => {
                 ferienwohnungDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 window.renderFwListe();
