@@ -198,14 +198,14 @@
         .booking-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
         .booking-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s; width: 100%; box-sizing: border-box; }
         .booking-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.06); border-color: #b5c0cf; }
-        .booking-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #eef2f5; padding-bottom: 12px; margin-bottom: 5px; cursor: pointer; gap: 12px; }
-        .booking-summary { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
-        .booking-summary-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+        .booking-header { display: grid; grid-template-columns: minmax(120px, 0.9fr) minmax(240px, 2fr) minmax(220px, 1.6fr) auto; align-items: center; border-bottom: 1px solid #eef2f5; padding-bottom: 10px; margin-bottom: 5px; cursor: pointer; gap: 12px; }
+        .booking-summary { display: contents; }
+        .booking-summary-meta { display: contents; }
         .booking-toggle { border: none; background: #eef2f5; color: var(--secondary); width: 32px; height: 32px; border-radius: 999px; font-size: 1.2em; line-height: 1; cursor: pointer; flex-shrink: 0; }
         .booking-toggle:hover { background: #dbe4ee; }
-        .booking-dates { font-size: 0.95em; color: var(--secondary); font-weight: 600; display: flex; align-items: center; gap: 5px; }
-        .booking-name { margin: 0; color: var(--primary); font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .booking-inline-values { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+        .booking-dates { font-size: 0.95em; color: var(--secondary); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .booking-name { margin: 0; color: var(--primary); font-size: 1.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .booking-inline-values { display: flex; align-items: center; gap: 16px; justify-content: flex-end; white-space: nowrap; }
         .booking-inline-values .label { color: #667085; font-size: 0.9em; }
         .booking-body { font-size: 0.95em; color: #333; flex-grow: 1; display: flex; flex-direction: column; gap: 6px; }
         .booking-details { display: flex; flex-direction: column; gap: 12px; }
@@ -219,6 +219,13 @@
         .chip-studio { background: #e0f2fe; color: #0284c7; }
         .chip-zimmer { background: #fef08a; color: #ca8a04; }
 
+
+        @media (max-width: 980px) {
+            .booking-header { grid-template-columns: 1fr auto; }
+            .booking-summary, .booking-summary-meta { display: flex; flex-direction: column; gap: 8px; }
+            .booking-inline-values { justify-content: flex-start; flex-wrap: wrap; }
+            .booking-dates { white-space: normal; }
+        }
         @media (max-width: 1100px) {
             .form-grid { grid-template-columns: repeat(6, 1fr); }
             .col-2, .col-3, .col-4, .col-5, .col-6, .col-8, .col-12 { grid-column: span 6; }
@@ -2561,13 +2568,12 @@
                             <div class="booking-summary">
                                 <div class="booking-summary-meta">
                                     <span class="status-chip ${chipClass}">${escapeHtml(buchung.objekt)}</span>
-                                    <div class="booking-dates">📅 ${formatDatumCH(buchung.datum_von)} - ${formatDatumCH(buchung.datum_bis)}</div>
+                                    <h3 class="booking-name">${escapeHtml(buchung.name)} · <span class="booking-dates">📅 ${formatDatumCH(buchung.datum_von)} - ${formatDatumCH(buchung.datum_bis)}</span></h3>
                                     <div class="booking-inline-values">
                                         <div><span class="label">Preis gesamt:</span> <strong>CHF ${formatCHF(buchung.preis_rappen || 0)}</strong></div>
                                         <div><span class="label">Bezahlt:</span> <span class="status-chip ${bezahltClass}">${escapeHtml(buchung.bezahlt || 'Nein')}</span></div>
                                     </div>
                                 </div>
-                                <h3 class="booking-name">${escapeHtml(buchung.name)}</h3>
                             </div>
                             <button class="booking-toggle" type="button" aria-expanded="false" title="Buchung auf-/zuklappen">⌄</button>
                         </div>
