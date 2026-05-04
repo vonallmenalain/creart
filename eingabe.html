@@ -468,6 +468,7 @@
 
         let unsubscribeBuchungen = null;
         let unsubscribeEB = null;
+        const SESSION_LAST_BUCHUNG_DATUM_KEY = 'creart_last_buchung_datum';
 
         function stopRealtimeSubscriptions() {
             if (unsubscribeBuchungen) {
@@ -522,9 +523,41 @@
 
         function updateYearConstraints(year) {
             const start = `${year}-01-01`, end = `${year}-12-31`;
-            document.getElementById('datum').min = start; document.getElementById('datum').max = end; document.getElementById('datum').value = start;
+            document.getElementById('datum').min = start; document.getElementById('datum').max = end; setDefaultBuchungsdatum();
             document.getElementById('filterDatumVon').min = start; document.getElementById('filterDatumVon').max = end; document.getElementById('filterDatumVon').value = start;
             document.getElementById('filterDatumBis').min = start; document.getElementById('filterDatumBis').max = end; document.getElementById('filterDatumBis').value = end;
+        }
+
+        function getTodayIsoDate() {
+            const now = new Date();
+            const month = `${now.getMonth() + 1}`.padStart(2, '0');
+            const day = `${now.getDate()}`.padStart(2, '0');
+            return `${now.getFullYear()}-${month}-${day}`;
+        }
+
+        function getSessionBuchungsdatum() {
+            return window.sessionStorage.getItem(SESSION_LAST_BUCHUNG_DATUM_KEY);
+        }
+
+        function setSessionBuchungsdatum(datum) {
+            if (!datum) return;
+            window.sessionStorage.setItem(SESSION_LAST_BUCHUNG_DATUM_KEY, datum);
+        }
+
+        function setDefaultBuchungsdatum() {
+            const datumInput = document.getElementById('datum');
+            const selectedYear = document.getElementById('selectedYear').value;
+            const start = `${selectedYear}-01-01`;
+            const end = `${selectedYear}-12-31`;
+            const today = getTodayIsoDate();
+            const sessionDatum = getSessionBuchungsdatum();
+
+            const isValidInYear = (value) => !!value && value >= start && value <= end;
+
+            let defaultDatum = isValidInYear(sessionDatum) ? sessionDatum : '';
+            if (!defaultDatum) defaultDatum = isValidInYear(today) ? today : start;
+
+            datumInput.value = defaultDatum;
         }
 
         window.openTab = function(tabId, ev) {
@@ -750,6 +783,8 @@
                 anteil_privat: anteilPrivatVal ? Math.round(parseFloat(anteilPrivatVal) * 100) : 0
             };
             
+            setSessionBuchungsdatum(d);
+
             btn.disabled = true;
             btn.textContent = 'Speichert...';
 
