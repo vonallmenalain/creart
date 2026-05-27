@@ -741,6 +741,7 @@
                 return;
             }
             changeYear();
+            ladeFerienwohnung();
             ladeAdressen();
             ladeDebitoren();
         }
@@ -952,7 +953,6 @@
             resetDebitorForm({ collapse: true, preserveDate: true });
 
             ladeVerkaeufe();
-            ladeFerienwohnung();
         };
 
         function init() {
@@ -994,6 +994,7 @@
             setCollapsibleState('fwFormCard', false, 'fwFormToggleLabel', 'fwFormToggleIcon');
 
             changeYear();
+            ladeFerienwohnung();
             renderMatrixFilterControls();
             ladeAdressen();
             ladeDebitoren();
@@ -2609,11 +2610,10 @@
                 if (unsubscribeFerienwohnung) { unsubscribeFerienwohnung(); unsubscribeFerienwohnung = null; }
                 return;
             }
-            const year = document.getElementById('selectedYear').value;
             if (unsubscribeFerienwohnung) unsubscribeFerienwohnung();
 
-            // Lade alle Buchungen für das selektierte Jahr
-            const q = query(collection(db, 'ferienwohnung_buchungen'), where('datum_von', '>=', `${year}-01-01`), where('datum_von', '<=', `${year}-12-31`));
+            // Lade alle Buchungen aller Jahre (kein Jahresfilter)
+            const q = collection(db, 'ferienwohnung_buchungen');
 
             unsubscribeFerienwohnung = onSnapshot(q, (snap) => {
                 ferienwohnungDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
