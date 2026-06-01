@@ -314,6 +314,7 @@
     function formatVal(key, val) {
         if(val === null || val === undefined) return '-';
         if(key.includes('rappen') || key === 'betrag') return `CHF ${(val/100).toFixed(2)}`;
+        if(key === 'online' && Array.isArray(val)) return val.join(', ');
         if(key.includes('datum') || key === 'erstellt_am' || key === 'aktualisiert_am') {
             if(val.seconds) return new Date(val.seconds*1000).toLocaleString('de-CH');
             return val;

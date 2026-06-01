@@ -125,6 +125,25 @@
         .matrix-filter-item { display: flex; gap: 8px; align-items: flex-start; font-size: 0.92em; }
         .matrix-filter-item span { line-height: 1.25; }
         .matrix-filter-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .multi-select-wrap { position: relative; }
+        .multi-select-btn {
+            width: 100%; min-height: 45px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: #333;
+            font-size: 1em; font-family: inherit; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left;
+        }
+        .multi-select-btn:hover, .multi-select-btn.open { border-color: var(--primary); background: #f8fbfd; }
+        .multi-select-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .multi-select-chevron { color: #7f8c8d; font-size: 0.8em; flex: 0 0 auto; }
+        .multi-select-dropdown {
+            position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; display: none; padding: 8px; max-height: 240px; overflow-y: auto;
+            background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 14px 30px rgba(0,0,0,0.12);
+        }
+        .multi-select-dropdown.open { display: grid; gap: 4px; }
+        .multi-select-item {
+            display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px; border-radius: 6px; color: var(--secondary);
+            cursor: pointer; font-size: 0.95em; font-weight: 500;
+        }
+        .multi-select-item:hover { background: #eef6fb; color: var(--primary); }
+        .multi-select-item input { margin: 0; }
         .sonstige-table { table-layout: fixed; }
         .sonstige-table th:nth-child(1), .sonstige-table td:nth-child(1) { width: 92px; }
         .sonstige-table th:nth-child(2), .sonstige-table td:nth-child(2) { width: 118px; }
@@ -453,7 +472,20 @@
                     <div class="form-group col-3"><label>Nummer</label><input type="text" id="debitorNummer" placeholder="z.B. 2026-031"></div>
                     <div class="form-group col-3">
                         <label>Online</label>
-                        <select id="debitorOnline"><option value="">Bitte wählen</option><option value="A">A</option><option value="O">O</option><option value="WV">WV</option><option value="Mail">Mail</option><option value="Telefon">Telefon</option></select>
+                        <div class="multi-select-wrap" id="debitorOnlineWrap">
+                            <button type="button" class="multi-select-btn" id="debitorOnlineBtn" aria-expanded="false" aria-haspopup="true" onclick="toggleDebitorOnlineDropdown(event)">
+                                <span class="multi-select-label" id="debitorOnlineLabel">Bitte wählen</span>
+                                <span class="multi-select-chevron">▼</span>
+                            </button>
+                            <div class="multi-select-dropdown" id="debitorOnlineDropdown">
+                                <label class="multi-select-item"><input type="checkbox" name="debitorOnlineOption" value="A" onchange="syncDebitorOnlineLabel()"> <span>A</span></label>
+                                <label class="multi-select-item"><input type="checkbox" name="debitorOnlineOption" value="O" onchange="syncDebitorOnlineLabel()"> <span>O</span></label>
+                                <label class="multi-select-item"><input type="checkbox" name="debitorOnlineOption" value="B" onchange="syncDebitorOnlineLabel()"> <span>B</span></label>
+                                <label class="multi-select-item"><input type="checkbox" name="debitorOnlineOption" value="WV" onchange="syncDebitorOnlineLabel()"> <span>WV</span></label>
+                                <label class="multi-select-item"><input type="checkbox" name="debitorOnlineOption" value="Mail" onchange="syncDebitorOnlineLabel()"> <span>Mail</span></label>
+                                <label class="multi-select-item"><input type="checkbox" name="debitorOnlineOption" value="Telefon" onchange="syncDebitorOnlineLabel()"> <span>Telefon</span></label>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group col-3"><label>Rechnungsdatum</label><input type="date" id="debitorDatum"></div>
                     <div class="form-group col-3"><label>Betrag (CHF)</label><input type="number" id="debitorBetrag" step="0.01" min="0" placeholder="0.00"></div>
@@ -722,6 +754,7 @@
             "Schals", "Rundschals", "Mittli", "Diverses"
         ];
         const monateNamen = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+        const debitorOnlineOptionen = ["A", "O", "B", "WV", "Mail", "Telefon"];
 
         let unsubscribeVerkaeufe = null;
         let unsubscribeAdressen = null;
@@ -855,6 +888,72 @@
             return String(value || '').toLocaleLowerCase('de-CH').trim();
         }
 
+        function normalizeDebitorOnlineValues(value) {
+            const values = Array.isArray(value)
+                ? value
+                : String(value || '').split(/[,;/\s]+/);
+            const knownValues = new Set(debitorOnlineOptionen);
+            const uniqueValues = [];
+            values.map(v => String(v || '').trim()).filter(Boolean).forEach(value => {
+                if (!knownValues.has(value) || uniqueValues.includes(value)) return;
+                uniqueValues.push(value);
+            });
+            return debitorOnlineOptionen.filter(value => uniqueValues.includes(value));
+        }
+
+        function getDebitorOnlineValues(debitorOrValue) {
+            if (debitorOrValue && typeof debitorOrValue === 'object' && !Array.isArray(debitorOrValue)) {
+                return normalizeDebitorOnlineValues(debitorOrValue.online);
+            }
+            return normalizeDebitorOnlineValues(debitorOrValue);
+        }
+
+        function formatDebitorOnline(value) {
+            return getDebitorOnlineValues(value).join(', ');
+        }
+
+        function getDebitorOnlineInputs() {
+            return Array.from(document.querySelectorAll('input[name="debitorOnlineOption"]'));
+        }
+
+        function getSelectedDebitorOnlineValues() {
+            return getDebitorOnlineInputs().filter(input => input.checked).map(input => input.value);
+        }
+
+        function setDebitorOnlineValues(value) {
+            const selected = new Set(getDebitorOnlineValues(value));
+            getDebitorOnlineInputs().forEach(input => { input.checked = selected.has(input.value); });
+            syncDebitorOnlineLabel();
+        }
+
+        window.syncDebitorOnlineLabel = () => {
+            const selected = getSelectedDebitorOnlineValues();
+            const text = selected.length ? selected.join(', ') : 'Bitte wählen';
+            const label = document.getElementById('debitorOnlineLabel');
+            const btn = document.getElementById('debitorOnlineBtn');
+            if (label) label.innerText = text;
+            if (btn) btn.title = text;
+        };
+
+        function closeDebitorOnlineDropdown() {
+            const dropdown = document.getElementById('debitorOnlineDropdown');
+            const btn = document.getElementById('debitorOnlineBtn');
+            dropdown?.classList.remove('open');
+            btn?.classList.remove('open');
+            btn?.setAttribute('aria-expanded', 'false');
+        }
+
+        window.toggleDebitorOnlineDropdown = (ev) => {
+            ev?.stopPropagation();
+            const dropdown = document.getElementById('debitorOnlineDropdown');
+            const btn = document.getElementById('debitorOnlineBtn');
+            if (!dropdown || !btn) return;
+            const isOpen = !dropdown.classList.contains('open');
+            dropdown.classList.toggle('open', isOpen);
+            btn.classList.toggle('open', isOpen);
+            btn.setAttribute('aria-expanded', String(isOpen));
+        };
+
         function getMarketFilterKey(name) {
             return normText(name);
         }
@@ -976,6 +1075,7 @@
             updateAdressSortIcons();
             updateDebitorSortIcons();
             updateDebitorKundenStatus();
+            syncDebitorOnlineLabel();
 
             document.getElementById('adressSuche')?.addEventListener('input', renderAdressListe);
             document.getElementById('debitorSuche')?.addEventListener('input', renderDebitorListe);
@@ -984,8 +1084,9 @@
             document.addEventListener('click', (ev) => {
                 const wrap = document.getElementById('matrixFilterWrap');
                 const dropdown = document.getElementById('matrixFilterDropdown');
-                if (!wrap || !dropdown) return;
-                if (!wrap.contains(ev.target)) dropdown.classList.remove('open');
+                if (wrap && dropdown && !wrap.contains(ev.target)) dropdown.classList.remove('open');
+                const debitorOnlineWrap = document.getElementById('debitorOnlineWrap');
+                if (debitorOnlineWrap && !debitorOnlineWrap.contains(ev.target)) closeDebitorOnlineDropdown();
             });
 
             setCollapsibleState('eventFormCard', false, 'eventFormToggleLabel', 'eventFormToggleIcon');
@@ -1715,7 +1816,7 @@
             document.getElementById('debitorKundeNummer').value = '';
             document.getElementById('debitorKundenSuche').value = '';
             document.getElementById('debitorNummer').value = '';
-            document.getElementById('debitorOnline').value = '';
+            setDebitorOnlineValues([]);
             document.getElementById('debitorDatum').value = preserveDate && existingDate ? existingDate : defaultDate;
             document.getElementById('debitorBetrag').value = '';
             document.getElementById('debitorVorname').value = '';
@@ -1738,7 +1839,7 @@
             document.getElementById('debitorKundeId').value = debitor.kunde_id || '';
             document.getElementById('debitorKundeNummer').value = debitor.kunde_nummer || '';
             document.getElementById('debitorNummer').value = debitor.nummer || '';
-            document.getElementById('debitorOnline').value = debitor.online || '';
+            setDebitorOnlineValues(debitor);
             document.getElementById('debitorDatum').value = debitor.rechnungsdatum || '';
             document.getElementById('debitorBetrag').value = debitor.betrag_rappen ? (debitor.betrag_rappen / 100).toFixed(2) : '';
             document.getElementById('debitorVorname').value = debitor.vorname || '';
@@ -1764,7 +1865,7 @@
             document.getElementById('debitorKundeNummer').value = '';
             document.getElementById('debitorKundenSuche').value = '';
             document.getElementById('debitorNummer').value = '';
-            document.getElementById('debitorOnline').value = '';
+            setDebitorOnlineValues([]);
             document.getElementById('debitorBetrag').value = '';
             document.getElementById('debitorVorname').value = '';
             document.getElementById('debitorNachname').value = '';
@@ -1852,13 +1953,14 @@
             const nachname = document.getElementById('debitorNachname').value.trim();
             const betrag = parseFloat(document.getElementById('debitorBetrag').value || '0');
             const vorname = document.getElementById('debitorVorname').value.trim();
+            const online = getSelectedDebitorOnlineValues();
             if (!nummer && !rechnungsdatum && !nachname && !vorname && betrag <= 0) {
                 return showToast('Bitte mindestens ein Kernfeld erfassen (z.B. Nummer, Datum, Name oder Betrag).', 'warning');
             }
 
             const payload = {
                 debitor_id: document.getElementById('debitorInterneId').value || nextDebitorInternalId(document.getElementById('selectedYear').value),
-                nummer, online: document.getElementById('debitorOnline').value, rechnungsdatum,
+                nummer, online, rechnungsdatum,
                 vorname: document.getElementById('debitorVorname').value.trim(), nachname,
                 strasse: document.getElementById('debitorStrasse').value.trim(), plz: document.getElementById('debitorPlz').value.trim(), ort: document.getElementById('debitorOrt').value.trim(),
                 produkte: document.getElementById('debitorProdukte').value.trim(), betrag_rappen: Math.round(betrag * 100),
@@ -1913,6 +2015,7 @@
 
         function getDebitorSortValue(debitor, spalte) {
             if (spalte === 'betrag_rappen') return Number(debitor.betrag_rappen || 0);
+            if (spalte === 'online') return normText(formatDebitorOnline(debitor));
             return normText(debitor[spalte]);
         }
 
@@ -1922,7 +2025,7 @@
             const statusFilter = document.getElementById('debitorStatusFilter').value;
             let daten = [...debitorenDaten];
 
-            if (suchbegriff) { daten = daten.filter(debitor => normText(`${debitor.nummer || ''} ${debitor.online || ''} ${debitor.vorname || ''} ${debitor.nachname || ''} ${debitor.ort || ''} ${debitor.produkte || ''} ${debitor.mahnung || ''}`).includes(suchbegriff)); }
+            if (suchbegriff) { daten = daten.filter(debitor => normText(`${debitor.nummer || ''} ${formatDebitorOnline(debitor)} ${debitor.vorname || ''} ${debitor.nachname || ''} ${debitor.ort || ''} ${debitor.produkte || ''} ${debitor.mahnung || ''}`).includes(suchbegriff)); }
             if (statusFilter === 'offen') daten = daten.filter(debitor => !isDebitorBezahlt(debitor));
             if (statusFilter === 'bezahlt') daten = daten.filter(debitor => isDebitorBezahlt(debitor));
             if (statusFilter === 'gemahnt') daten = daten.filter(debitor => !!debitor.mahnung);
@@ -1948,11 +2051,12 @@
 
             tbody.innerHTML = daten.map(debitor => {
                 const bezahltStatus = debitor.bezahlt_status || 'Nein';
+                const onlineText = formatDebitorOnline(debitor);
                 const rowClass = isDebitorBezahlt(debitor) ? 'debitor-paid-row' : (debitor.mahnung ? 'debitor-reminder-row' : '');
                 return `
                     <tr class="${rowClass}">
                         <td>${escapeHtml(debitor.nummer || '')}</td>
-                        <td>${escapeHtml(debitor.online || '')}</td>
+                        <td>${escapeHtml(onlineText)}</td>
                         <td>${formatDatumCH(debitor.rechnungsdatum)}</td>
                         <td class="td-truncate mw-100" title="${escapeHtml(debitor.vorname || '')}">${escapeHtml(debitor.vorname || '')}</td>
                         <td class="td-truncate mw-120" title="${escapeHtml(debitor.nachname || '')}">${escapeHtml(debitor.nachname || '')}</td>
