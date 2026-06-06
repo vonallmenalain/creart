@@ -56,7 +56,7 @@
 
         .form-group { display: flex; flex-direction: column; }
         label { font-weight: 600; font-size: 0.85em; margin-bottom: 6px; color: var(--secondary); }
-        input[type="text"], input[type="number"], input[type="date"], input[type="search"], select, textarea {
+        input[type="text"], input[type="number"], input[type="date"], input[type="search"], input[type="email"], input[type="tel"], select, textarea {
             padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 1em; font-family: inherit; box-sizing: border-box;
         }
         textarea { min-height: 96px; resize: vertical; }
@@ -238,6 +238,7 @@
         .chip-studio { background: #e0f2fe; color: #0284c7; }
         .chip-zimmer { background: #fef08a; color: #ca8a04; }
         .fw-export-preview-table .text-cell { white-space: normal; min-width: 220px; max-width: 340px; }
+        .fw-export-preview-table .contact-cell { white-space: normal; min-width: 220px; max-width: 320px; }
         .fw-export-preview-table .remarks-cell { white-space: normal; min-width: 260px; max-width: 440px; }
 
 
@@ -563,9 +564,11 @@
                     <div class="form-group col-4"><label>Datum von</label><input type="date" id="fwDatumVon"></div>
                     <div class="form-group col-4"><label>Datum bis</label><input type="date" id="fwDatumBis"></div>
 
-                    <div class="form-group col-4"><label>Name (Gast)</label><input type="text" id="fwName" placeholder="Vorname Nachname"></div>
-                    <div class="form-group col-4"><label>Adresse</label><input type="text" id="fwAdresse" placeholder="Strasse und Nr."></div>
-                    <div class="form-group col-4"><label>PLZ Ort</label><input type="text" id="fwPlzOrt" placeholder="3000 Bern"></div>
+                    <div class="form-group col-3"><label>Name (Gast)</label><input type="text" id="fwName" placeholder="Vorname Nachname"></div>
+                    <div class="form-group col-3"><label>Adresse</label><input type="text" id="fwAdresse" placeholder="Strasse und Nr."></div>
+                    <div class="form-group col-2"><label>PLZ Ort</label><input type="text" id="fwPlzOrt" placeholder="3000 Bern"></div>
+                    <div class="form-group col-2"><label>E-Mail Adresse</label><input type="email" id="fwEmail" placeholder="name@example.com" autocomplete="email"></div>
+                    <div class="form-group col-2"><label>Telefonnummer</label><input type="tel" id="fwTelefon" placeholder="+41 79 000 00 00" autocomplete="tel"></div>
 
                     <div class="form-group col-3"><label>Erwachsene</label><input type="number" id="fwErwachsene" min="0" value="1"></div>
                     <div class="form-group col-3"><label>Kinder</label><input type="number" id="fwKinder" min="0" value="0"></div>
@@ -761,6 +764,7 @@
                             <th>Datum bis</th>
                             <th>Gast</th>
                             <th>Adresse</th>
+                            <th>Kontakt</th>
                             <th>Personen</th>
                             <th>Anbieter</th>
                             <th>Bemerkungen</th>
@@ -2563,6 +2567,8 @@
             document.getElementById('fwName').value = '';
             document.getElementById('fwAdresse').value = '';
             document.getElementById('fwPlzOrt').value = '';
+            document.getElementById('fwEmail').value = '';
+            document.getElementById('fwTelefon').value = '';
             document.getElementById('fwErwachsene').value = '1';
             document.getElementById('fwKinder').value = '0';
             document.getElementById('fwAnbieter').value = '';
@@ -2589,6 +2595,8 @@
             document.getElementById('fwName').value = buchung.name || '';
             document.getElementById('fwAdresse').value = buchung.adresse || '';
             document.getElementById('fwPlzOrt').value = buchung.plz_ort || '';
+            document.getElementById('fwEmail').value = buchung.email || '';
+            document.getElementById('fwTelefon').value = buchung.telefon || '';
             document.getElementById('fwErwachsene').value = buchung.erwachsene || 0;
             document.getElementById('fwKinder').value = buchung.kinder || 0;
             document.getElementById('fwAnbieter').value = buchung.anbieter || '';
@@ -2610,9 +2618,16 @@
             const datum_von = document.getElementById('fwDatumVon').value;
             const datum_bis = document.getElementById('fwDatumBis').value;
             const name = document.getElementById('fwName').value.trim();
+            const emailInput = document.getElementById('fwEmail');
+            const email = emailInput.value.trim();
+            const telefon = document.getElementById('fwTelefon').value.trim();
 
             if (!datum_von || !datum_bis || !name) {
                 return showToast('Bitte fülle mindestens Datum von, Datum bis und den Namen aus.', 'warning');
+            }
+
+            if (email && !emailInput.checkValidity()) {
+                return showToast('Bitte gib eine gültige E-Mail Adresse ein.', 'warning');
             }
 
             const payload = {
@@ -2620,6 +2635,8 @@
                 datum_von, datum_bis, name,
                 adresse: document.getElementById('fwAdresse').value.trim(),
                 plz_ort: document.getElementById('fwPlzOrt').value.trim(),
+                email,
+                telefon,
                 erwachsene: parseInt(document.getElementById('fwErwachsene').value) || 0,
                 kinder: parseInt(document.getElementById('fwKinder').value) || 0,
                 anbieter: document.getElementById('fwAnbieter').value.trim(),
@@ -2729,7 +2746,7 @@
 
             if (hasInvalidFwExportDateRange()) {
                 document.getElementById('fwExportCount').innerText = '0 Buchungen';
-                tbody.innerHTML = '<tr><td colspan="8" class="center muted" style="padding:20px;">Bitte wähle einen gültigen Datumsbereich.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="center muted" style="padding:20px;">Bitte wähle einen gültigen Datumsbereich.</td></tr>';
                 return;
             }
 
@@ -2737,7 +2754,7 @@
             document.getElementById('fwExportCount').innerText = `${daten.length} ${daten.length === 1 ? 'Buchung' : 'Buchungen'}`;
 
             if (daten.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="center muted" style="padding:20px;">Keine Buchungen mit diesen Filtern gefunden.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="center muted" style="padding:20px;">Keine Buchungen mit diesen Filtern gefunden.</td></tr>';
                 return;
             }
 
@@ -2745,6 +2762,10 @@
                 const adresseHtml = [
                     escapeHtml(buchung.adresse || ''),
                     escapeHtml(buchung.plz_ort || '')
+                ].filter(Boolean).join('<br>') || '<span class="muted">—</span>';
+                const kontaktHtml = [
+                    buchung.email ? `E-Mail: ${escapeHtml(buchung.email)}` : '',
+                    buchung.telefon ? `Telefon: ${escapeHtml(buchung.telefon)}` : ''
                 ].filter(Boolean).join('<br>') || '<span class="muted">—</span>';
                 const bemerkungenHtml = escapeHtml(buchung.bemerkungen || '—').replace(/\n/g, '<br>');
 
@@ -2755,6 +2776,7 @@
                         <td>${formatDatumCH(buchung.datum_bis)}</td>
                         <td>${escapeHtml(buchung.name || '')}</td>
                         <td class="text-cell">${adresseHtml}</td>
+                        <td class="contact-cell">${kontaktHtml}</td>
                         <td>${escapeHtml(formatFwExportPersonen(buchung))}</td>
                         <td>${escapeHtml(buchung.anbieter || '—')}</td>
                         <td class="remarks-cell">${bemerkungenHtml}</td>
@@ -2785,6 +2807,8 @@
                     "Name Gast": buchung.name || '',
                     "Adresse": buchung.adresse || '',
                     "PLZ / Ort": buchung.plz_ort || '',
+                    "E-Mail Adresse": buchung.email || '',
+                    "Telefonnummer": buchung.telefon || '',
                     "Erwachsene": erwachsene,
                     "Kinder": kinder,
                     "Personen total": erwachsene + kinder,
@@ -2798,8 +2822,9 @@
                 const worksheet = XLSX.utils.json_to_sheet(exportData);
                 worksheet['!cols'] = [
                     { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 26 },
-                    { wch: 32 }, { wch: 22 }, { wch: 12 }, { wch: 10 },
-                    { wch: 15 }, { wch: 18 }, { wch: 16 }, { wch: 42 }
+                    { wch: 32 }, { wch: 22 }, { wch: 28 }, { wch: 18 },
+                    { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 18 },
+                    { wch: 16 }, { wch: 42 }
                 ];
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Ferienwohnung");
@@ -2867,6 +2892,14 @@
                 const chipClass = isStudio ? 'chip-studio' : 'chip-zimmer';
                 const bezahltClass = buchung.bezahlt === 'Ja' ? 'ja' : 'nein';
                 const anzahlungStr = buchung.anzahlung_rappen > 0 ? ` / Anz. CHF ${formatCHF(buchung.anzahlung_rappen)}` : '';
+                const adresseDetailsHtml = [
+                    escapeHtml(buchung.adresse || ''),
+                    escapeHtml(buchung.plz_ort || '')
+                ].filter(Boolean).join('<br>') || '&mdash;';
+                const kontaktDetailsHtml = [
+                    buchung.email ? `E-Mail: ${escapeHtml(buchung.email)}` : '',
+                    buchung.telefon ? `Telefon: ${escapeHtml(buchung.telefon)}` : ''
+                ].filter(Boolean).join('<br>');
 
                 const bookingCardId = `booking-card-${buchung.id}`;
 
@@ -2887,7 +2920,7 @@
                         </div>
                         <div class="booking-details">
                             <div class="booking-body">
-                            <div class="muted" style="margin-bottom: 10px; font-size: 0.9em;">${escapeHtml(buchung.adresse)}<br>${escapeHtml(buchung.plz_ort)}</div>
+                            <div class="muted" style="margin-bottom: 10px; font-size: 0.9em;">${adresseDetailsHtml}${kontaktDetailsHtml ? `<br>${kontaktDetailsHtml}` : ''}</div>
                             <div class="booking-row"><span class="label">Personen:</span> <span>${buchung.erwachsene} Erw. / ${buchung.kinder} Kind(er)</span></div>
                             <div class="booking-row"><span class="label">Anbieter:</span> <span>${escapeHtml(buchung.anbieter || '—')}</span></div>
                             <div class="booking-row"><span class="label">Gebucht am:</span> <span>${formatDatumCH(buchung.buchungsdatum)}</span></div>
