@@ -237,6 +237,8 @@
         .booking-actions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #eef2f5; padding-top: 15px; margin-top: 5px; }
         .chip-studio { background: #e0f2fe; color: #0284c7; }
         .chip-zimmer { background: #fef08a; color: #ca8a04; }
+        .fw-export-preview-table .text-cell { white-space: normal; min-width: 220px; max-width: 340px; }
+        .fw-export-preview-table .remarks-cell { white-space: normal; min-width: 260px; max-width: 440px; }
 
 
         @media (max-width: 980px) {
@@ -619,6 +621,7 @@
                     </div>
                     <div class="form-group"><label>Zeitraum von</label><input type="date" id="fwFilterVon" onchange="renderFwListe()"></div>
                     <div class="form-group"><label>Zeitraum bis</label><input type="date" id="fwFilterBis" onchange="renderFwListe()"></div>
+                    <div class="form-group"><button class="btn-secondary" style="margin-top: 24px; padding: 11px 15px;" onclick="openFwExportModal()">Export</button></div>
                     <div class="form-group"><button class="btn-secondary" style="margin-top: 24px; padding: 11px 15px;" onclick="resetFwFilter()">Filter leeren</button></div>
                 </div>
             </div>
@@ -715,6 +718,61 @@
             <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
                 <button class="btn-secondary" onclick="closeExportModal()">Abbrechen</button>
                 <button class="btn-main" onclick="executeExport()">Ausgewählte exportieren</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="fwExportModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width: 1400px; width: 95%;">
+            <button class="modal-close-btn" onclick="closeFwExportModal()">✖</button>
+            <h2 style="margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+                <span>Ferienwohnung exportieren (.xlsx)</span>
+                <span style="font-size: 0.65em; background: var(--primary); color: white; padding: 6px 12px; border-radius: 999px;">
+                    Export: <strong id="fwExportCount">0</strong>
+                </span>
+            </h2>
+            <p style="color: var(--secondary); margin-bottom: 20px;">Grenze die Buchungen nach Aufenthaltsdatum ein. Kosten- und Zahlungsfelder bleiben ausserhalb des Exports.</p>
+
+            <div class="form-grid" style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
+                <div class="form-group col-4">
+                    <label>Objekt</label>
+                    <select id="fwExportObjekt" onchange="renderFwExportPreview()">
+                        <option value="alle">Alle Objekte</option>
+                        <option value="Studio">Studio</option>
+                        <option value="2-Zimmer">2-Zimmer</option>
+                    </select>
+                </div>
+                <div class="form-group col-4">
+                    <label>Datum von</label>
+                    <input type="date" id="fwExportVon" oninput="renderFwExportPreview()">
+                </div>
+                <div class="form-group col-4">
+                    <label>Datum bis</label>
+                    <input type="date" id="fwExportBis" oninput="renderFwExportPreview()">
+                </div>
+            </div>
+
+            <div class="table-container" style="max-height: 50vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+                <table class="fw-export-preview-table" style="margin: 0; width: 100%;">
+                    <thead style="position: sticky; top: 0; z-index: 10;">
+                        <tr>
+                            <th>Objekt</th>
+                            <th>Datum von</th>
+                            <th>Datum bis</th>
+                            <th>Gast</th>
+                            <th>Adresse</th>
+                            <th>Personen</th>
+                            <th>Anbieter</th>
+                            <th>Bemerkungen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fwExportPreviewBody"></tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-secondary" onclick="closeFwExportModal()">Abbrechen</button>
+                <button class="btn-main" onclick="executeFwExport()">Exportieren</button>
             </div>
         </div>
     </div>
@@ -2614,6 +2672,151 @@
             window.renderFwListe();
         };
 
+        function getFwExportFilters() {
+            return {
+                objekt: document.getElementById('fwExportObjekt').value,
+                von: document.getElementById('fwExportVon').value,
+                bis: document.getElementById('fwExportBis').value
+            };
+        }
+
+        function hasInvalidFwExportDateRange() {
+            const { von, bis } = getFwExportFilters();
+            return !!(von && bis && von > bis);
+        }
+
+        function getFilteredFwExportData() {
+            if (hasInvalidFwExportDateRange()) return [];
+
+            const { objekt, von, bis } = getFwExportFilters();
+            return ferienwohnungDaten
+                .filter(b => {
+                    if (objekt !== 'alle' && b.objekt !== objekt) return false;
+                    if (von && (!b.datum_von || b.datum_von < von)) return false;
+                    if (bis && (!b.datum_bis || b.datum_bis > bis)) return false;
+                    return true;
+                })
+                .sort((a, b) => {
+                    const datumVergleich = (a.datum_von || '').localeCompare(b.datum_von || '');
+                    if (datumVergleich !== 0) return datumVergleich;
+                    const bisVergleich = (a.datum_bis || '').localeCompare(b.datum_bis || '');
+                    if (bisVergleich !== 0) return bisVergleich;
+                    return `${a.objekt || ''}${a.name || ''}`.localeCompare(`${b.objekt || ''}${b.name || ''}`);
+                });
+        }
+
+        function formatFwExportPersonen(buchung) {
+            const erwachsene = Number(buchung.erwachsene || 0);
+            const kinder = Number(buchung.kinder || 0);
+            const total = erwachsene + kinder;
+            return `${total} (${erwachsene} Erw. / ${kinder} Kind(er))`;
+        }
+
+        window.openFwExportModal = () => {
+            document.getElementById('fwExportObjekt').value = document.getElementById('fwFilterObjekt').value || 'alle';
+            document.getElementById('fwExportVon').value = document.getElementById('fwFilterVon').value || '';
+            document.getElementById('fwExportBis').value = document.getElementById('fwFilterBis').value || '';
+            window.renderFwExportPreview();
+            document.getElementById('fwExportModal').style.display = 'flex';
+        };
+
+        window.closeFwExportModal = () => {
+            document.getElementById('fwExportModal').style.display = 'none';
+        };
+
+        window.renderFwExportPreview = () => {
+            const tbody = document.getElementById('fwExportPreviewBody');
+
+            if (hasInvalidFwExportDateRange()) {
+                document.getElementById('fwExportCount').innerText = '0 Buchungen';
+                tbody.innerHTML = '<tr><td colspan="8" class="center muted" style="padding:20px;">Bitte wähle einen gültigen Datumsbereich.</td></tr>';
+                return;
+            }
+
+            const daten = getFilteredFwExportData();
+            document.getElementById('fwExportCount').innerText = `${daten.length} ${daten.length === 1 ? 'Buchung' : 'Buchungen'}`;
+
+            if (daten.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="center muted" style="padding:20px;">Keine Buchungen mit diesen Filtern gefunden.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = daten.map(buchung => {
+                const adresseHtml = [
+                    escapeHtml(buchung.adresse || ''),
+                    escapeHtml(buchung.plz_ort || '')
+                ].filter(Boolean).join('<br>') || '<span class="muted">—</span>';
+                const bemerkungenHtml = escapeHtml(buchung.bemerkungen || '—').replace(/\n/g, '<br>');
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(buchung.objekt || '')}</td>
+                        <td>${formatDatumCH(buchung.datum_von)}</td>
+                        <td>${formatDatumCH(buchung.datum_bis)}</td>
+                        <td>${escapeHtml(buchung.name || '')}</td>
+                        <td class="text-cell">${adresseHtml}</td>
+                        <td>${escapeHtml(formatFwExportPersonen(buchung))}</td>
+                        <td>${escapeHtml(buchung.anbieter || '—')}</td>
+                        <td class="remarks-cell">${bemerkungenHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+        };
+
+        window.executeFwExport = () => {
+            if (hasInvalidFwExportDateRange()) {
+                showToast('Bitte wähle einen gültigen Datumsbereich für den Export.', 'warning');
+                return;
+            }
+
+            const daten = getFilteredFwExportData();
+            if (daten.length === 0) {
+                showToast('Es gibt keine Buchungen für diesen Export.', 'warning');
+                return;
+            }
+
+            const exportData = daten.map(buchung => {
+                const erwachsene = Number(buchung.erwachsene || 0);
+                const kinder = Number(buchung.kinder || 0);
+                return {
+                    "Objekt": buchung.objekt || '',
+                    "Datum von": buchung.datum_von ? formatDatumCH(buchung.datum_von) : '',
+                    "Datum bis": buchung.datum_bis ? formatDatumCH(buchung.datum_bis) : '',
+                    "Name Gast": buchung.name || '',
+                    "Adresse": buchung.adresse || '',
+                    "PLZ / Ort": buchung.plz_ort || '',
+                    "Erwachsene": erwachsene,
+                    "Kinder": kinder,
+                    "Personen total": erwachsene + kinder,
+                    "Anbieter": buchung.anbieter || '',
+                    "Buchungsdatum": buchung.buchungsdatum ? formatDatumCH(buchung.buchungsdatum) : '',
+                    "Bemerkungen": buchung.bemerkungen || ''
+                };
+            });
+
+            try {
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                worksheet['!cols'] = [
+                    { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 26 },
+                    { wch: 32 }, { wch: 22 }, { wch: 12 }, { wch: 10 },
+                    { wch: 15 }, { wch: 18 }, { wch: 16 }, { wch: 42 }
+                ];
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Ferienwohnung");
+
+                const { von, bis } = getFwExportFilters();
+                const today = new Date().toISOString().split('T')[0];
+                const zeitraum = von || bis ? `${von || 'Start'}_bis_${bis || 'Ende'}` : today;
+                XLSX.writeFile(workbook, `Ferienwohnung_Export_${zeitraum}.xlsx`);
+
+                closeFwExportModal();
+                showToast('Ferienwohnung-Export wurde erstellt.', 'success');
+            } catch (e) {
+                console.error("Fehler beim Erstellen der Ferienwohnung-Excel-Datei:", e);
+                showToast('Ein unerwarteter Fehler ist aufgetreten.', 'error');
+            }
+        };
+
         window.toggleFwBookingCard = (cardId) => {
             const card = document.getElementById(cardId);
             if (!card) return;
@@ -2722,6 +2925,9 @@
             unsubscribeFerienwohnung = onSnapshot(q, (snap) => {
                 ferienwohnungDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 window.renderFwListe();
+                if (document.getElementById('fwExportModal').style.display === 'flex') {
+                    window.renderFwExportPreview();
+                }
             });
         }
 
