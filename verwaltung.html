@@ -762,12 +762,15 @@
                             <th>Objekt</th>
                             <th>Datum von</th>
                             <th>Datum bis</th>
-                            <th>Gast</th>
+                            <th>Name Gast</th>
                             <th>Adresse</th>
-                            <th>Kontakt</th>
-                            <th>Personen</th>
+                            <th>Anz Erw.</th>
+                            <th>Anz Kinder</th>
                             <th>Anbieter</th>
+                            <th>Buchungsdatum</th>
                             <th>Bemerkungen</th>
+                            <th>Telefonnummer</th>
+                            <th>E-Mail</th>
                         </tr>
                     </thead>
                     <tbody id="fwExportPreviewBody"></tbody>
@@ -2722,11 +2725,11 @@
                 });
         }
 
-        function formatFwExportPersonen(buchung) {
-            const erwachsene = Number(buchung.erwachsene || 0);
-            const kinder = Number(buchung.kinder || 0);
-            const total = erwachsene + kinder;
-            return `${total} (${erwachsene} Erw. / ${kinder} Kind(er))`;
+        function formatFwExportAdresse(buchung) {
+            return [
+                buchung.adresse || '',
+                buchung.plz_ort || ''
+            ].map(value => String(value).trim()).filter(Boolean).join(', ');
         }
 
         window.openFwExportModal = () => {
@@ -2746,7 +2749,7 @@
 
             if (hasInvalidFwExportDateRange()) {
                 document.getElementById('fwExportCount').innerText = '0 Buchungen';
-                tbody.innerHTML = '<tr><td colspan="9" class="center muted" style="padding:20px;">Bitte wähle einen gültigen Datumsbereich.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="center muted" style="padding:20px;">Bitte wähle einen gültigen Datumsbereich.</td></tr>';
                 return;
             }
 
@@ -2754,19 +2757,14 @@
             document.getElementById('fwExportCount').innerText = `${daten.length} ${daten.length === 1 ? 'Buchung' : 'Buchungen'}`;
 
             if (daten.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="center muted" style="padding:20px;">Keine Buchungen mit diesen Filtern gefunden.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="center muted" style="padding:20px;">Keine Buchungen mit diesen Filtern gefunden.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = daten.map(buchung => {
-                const adresseHtml = [
-                    escapeHtml(buchung.adresse || ''),
-                    escapeHtml(buchung.plz_ort || '')
-                ].filter(Boolean).join('<br>') || '<span class="muted">—</span>';
-                const kontaktHtml = [
-                    buchung.email ? `E-Mail: ${escapeHtml(buchung.email)}` : '',
-                    buchung.telefon ? `Telefon: ${escapeHtml(buchung.telefon)}` : ''
-                ].filter(Boolean).join('<br>') || '<span class="muted">—</span>';
+                const erwachsene = Number(buchung.erwachsene || 0);
+                const kinder = Number(buchung.kinder || 0);
+                const adresseHtml = escapeHtml(formatFwExportAdresse(buchung) || '—');
                 const bemerkungenHtml = escapeHtml(buchung.bemerkungen || '—').replace(/\n/g, '<br>');
 
                 return `
@@ -2776,10 +2774,13 @@
                         <td>${formatDatumCH(buchung.datum_bis)}</td>
                         <td>${escapeHtml(buchung.name || '')}</td>
                         <td class="text-cell">${adresseHtml}</td>
-                        <td class="contact-cell">${kontaktHtml}</td>
-                        <td>${escapeHtml(formatFwExportPersonen(buchung))}</td>
+                        <td>${erwachsene}</td>
+                        <td>${kinder}</td>
                         <td>${escapeHtml(buchung.anbieter || '—')}</td>
+                        <td>${buchung.buchungsdatum ? formatDatumCH(buchung.buchungsdatum) : ''}</td>
                         <td class="remarks-cell">${bemerkungenHtml}</td>
+                        <td class="contact-cell">${escapeHtml(buchung.telefon || '—')}</td>
+                        <td class="contact-cell">${escapeHtml(buchung.email || '—')}</td>
                     </tr>
                 `;
             }).join('');
@@ -2797,6 +2798,21 @@
                 return;
             }
 
+            const fwExportHeaders = [
+                "Objekt",
+                "Datum von",
+                "Datum bis",
+                "Name Gast",
+                "Adresse",
+                "Anz Erw.",
+                "Anz Kinder",
+                "Anbieter",
+                "Buchungsdatum",
+                "Bemerkungen",
+                "Telefonnummer",
+                "E-Mail"
+            ];
+
             const exportData = daten.map(buchung => {
                 const erwachsene = Number(buchung.erwachsene || 0);
                 const kinder = Number(buchung.kinder || 0);
@@ -2805,26 +2821,23 @@
                     "Datum von": buchung.datum_von ? formatDatumCH(buchung.datum_von) : '',
                     "Datum bis": buchung.datum_bis ? formatDatumCH(buchung.datum_bis) : '',
                     "Name Gast": buchung.name || '',
-                    "Adresse": buchung.adresse || '',
-                    "PLZ / Ort": buchung.plz_ort || '',
-                    "E-Mail Adresse": buchung.email || '',
-                    "Telefonnummer": buchung.telefon || '',
-                    "Erwachsene": erwachsene,
-                    "Kinder": kinder,
-                    "Personen total": erwachsene + kinder,
+                    "Adresse": formatFwExportAdresse(buchung),
+                    "Anz Erw.": erwachsene,
+                    "Anz Kinder": kinder,
                     "Anbieter": buchung.anbieter || '',
                     "Buchungsdatum": buchung.buchungsdatum ? formatDatumCH(buchung.buchungsdatum) : '',
-                    "Bemerkungen": buchung.bemerkungen || ''
+                    "Bemerkungen": buchung.bemerkungen || '',
+                    "Telefonnummer": buchung.telefon || '',
+                    "E-Mail": buchung.email || ''
                 };
             });
 
             try {
-                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const worksheet = XLSX.utils.json_to_sheet(exportData, { header: fwExportHeaders });
                 worksheet['!cols'] = [
                     { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 26 },
-                    { wch: 32 }, { wch: 22 }, { wch: 28 }, { wch: 18 },
-                    { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 18 },
-                    { wch: 16 }, { wch: 42 }
+                    { wch: 42 }, { wch: 10 }, { wch: 12 }, { wch: 18 },
+                    { wch: 16 }, { wch: 42 }, { wch: 18 }, { wch: 28 }
                 ];
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Ferienwohnung");
