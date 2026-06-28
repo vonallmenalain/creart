@@ -622,6 +622,15 @@
                             <option value="2-Zimmer">Nur 2-Zimmer</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Sortierung</label>
+                        <select id="fwSortierung" onchange="renderFwListe()">
+                            <option value="datum_asc">Anreisedatum aufsteigend</option>
+                            <option value="datum_desc">Anreisedatum absteigend</option>
+                            <option value="erfassung_desc">Erfassungsdatum (neueste zuerst)</option>
+                            <option value="erfassung_asc">Erfassungsdatum (älteste zuerst)</option>
+                        </select>
+                    </div>
                     <div class="form-group"><label>Zeitraum von</label><input type="date" id="fwFilterVon" onchange="renderFwListe()"></div>
                     <div class="form-group"><label>Zeitraum bis</label><input type="date" id="fwFilterBis" onchange="renderFwListe()"></div>
                     <div class="form-group"><button class="btn-secondary" style="margin-top: 24px; padding: 11px 15px;" onclick="openFwExportModal()">Export</button></div>
@@ -877,6 +886,21 @@
             const parts = String(datum).split('-');
             if (parts.length !== 3) return datum;
             return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
+        function formatErfassung(t) {
+            if (!t) return '-';
+            let d;
+            if (typeof t.toDate === 'function') d = t.toDate();
+            else if (typeof t.seconds === 'number') d = new Date(t.seconds * 1000);
+            else {
+                const parsed = Date.parse(t);
+                if (isNaN(parsed)) return '-';
+                d = new Date(parsed);
+            }
+            const tag = String(d.getDate()).padStart(2, '0');
+            const monat = String(d.getMonth() + 1).padStart(2, '0');
+            return `${tag}.${monat}.${d.getFullYear()}`;
         }
 
         function formatCHF(rappen) {
@@ -2687,6 +2711,7 @@
 
         window.resetFwFilter = () => {
             document.getElementById('fwFilterObjekt').value = 'alle';
+            document.getElementById('fwSortierung').value = 'datum_asc';
             document.getElementById('fwFilterVon').value = '';
             document.getElementById('fwFilterBis').value = '';
             window.renderFwListe();
@@ -2878,8 +2903,33 @@
                 return true;
             });
 
-            // Sortieren nach Anreisedatum
-            daten.sort((a, b) => (a.datum_von || '').localeCompare(b.datum_von || ''));
+            // Sortieren
+            const sortierung = document.getElementById('fwSortierung').value;
+            const erfassungMillis = (b) => {
+                const t = b.erstellt_am;
+                if (!t) return null;
+                if (typeof t.toMillis === 'function') return t.toMillis();
+                if (typeof t.seconds === 'number') return t.seconds * 1000;
+                const parsed = Date.parse(t);
+                return isNaN(parsed) ? null : parsed;
+            };
+            if (sortierung === 'datum_desc') {
+                daten.sort((a, b) => (b.datum_von || '').localeCompare(a.datum_von || ''));
+            } else if (sortierung === 'erfassung_desc' || sortierung === 'erfassung_asc') {
+                const richtung = sortierung === 'erfassung_desc' ? -1 : 1;
+                daten.sort((a, b) => {
+                    const av = erfassungMillis(a);
+                    const bv = erfassungMillis(b);
+                    // Buchungen ohne Erfassungsdatum ans Ende stellen
+                    if (av === null && bv === null) return (a.datum_von || '').localeCompare(b.datum_von || '');
+                    if (av === null) return 1;
+                    if (bv === null) return -1;
+                    return (av - bv) * richtung;
+                });
+            } else {
+                // Standard: Anreisedatum aufsteigend
+                daten.sort((a, b) => (a.datum_von || '').localeCompare(b.datum_von || ''));
+            }
 
             document.getElementById('fwCountBadge').innerText = `${daten.length} ${daten.length === 1 ? 'Buchung' : 'Buchungen'}`;
 
@@ -2937,6 +2987,7 @@
                             <div class="booking-row"><span class="label">Personen:</span> <span>${buchung.erwachsene} Erw. / ${buchung.kinder} Kind(er)</span></div>
                             <div class="booking-row"><span class="label">Anbieter:</span> <span>${escapeHtml(buchung.anbieter || '—')}</span></div>
                             <div class="booking-row"><span class="label">Gebucht am:</span> <span>${formatDatumCH(buchung.buchungsdatum)}</span></div>
+                            <div class="booking-row"><span class="label">Erfasst am:</span> <span>${formatErfassung(buchung.erstellt_am)}</span></div>
                             ${buchung.bemerkungen ? `<div style="margin-top: 8px; font-size: 0.85em; background: #fff8e1; padding: 8px; border-radius: 4px;"><strong>Bemerkung:</strong> ${escapeHtml(buchung.bemerkungen)}</div>` : ''}
                             </div>
                             <div class="booking-finances">
