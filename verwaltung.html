@@ -1128,7 +1128,7 @@
             const start = `${year}-01-01`;
             const defaultDate = (year === currentYear) ? today : start;
 
-            document.getElementById('eventDatum').value = start;
+            document.getElementById('eventDatum').value = defaultDate;
             document.getElementById('eventDatum').min = start;
             document.getElementById('eventDatum').max = `${year}-12-31`;
 
@@ -1182,6 +1182,8 @@
             setCollapsibleState('adressFormCard', false, 'adressFormToggleLabel', 'adressFormToggleIcon');
             setCollapsibleState('debitorFormCard', false, 'debitorFormToggleLabel', 'debitorFormToggleIcon');
             setCollapsibleState('fwFormCard', false, 'fwFormToggleLabel', 'fwFormToggleIcon');
+
+            document.getElementById('fwFilterVon').value = new Date().toISOString().split('T')[0];
 
             changeYear();
             ladeFerienwohnung();
@@ -1298,10 +1300,13 @@
 
         function resetEventForm({ collapse = false, preserveDate = false } = {}) {
             const existingDate = document.getElementById('eventDatum').value;
-            const yearStart = `${document.getElementById('selectedYear').value}-01-01`;
+            const selectedYear = document.getElementById('selectedYear').value;
+            const yearStart = `${selectedYear}-01-01`;
+            const today = new Date().toISOString().split('T')[0];
+            const defaultDate = (selectedYear === new Date().getFullYear().toString()) ? today : yearStart;
             bearbeitungsEventId = null;
             document.getElementById('eventTyp').value = 'markt';
-            document.getElementById('eventDatum').value = preserveDate && existingDate ? existingDate : yearStart;
+            document.getElementById('eventDatum').value = preserveDate && existingDate ? existingDate : defaultDate;
             document.getElementById('eventName').value = '';
             document.getElementById('eventOrt').value = '';
             document.querySelectorAll('.anzahl-input, .betrag-input').forEach(input => input.value = '');
