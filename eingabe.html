@@ -55,6 +55,18 @@
         .cb-privat { background: #edf7ed; color: #1f7a3f; border-color: #c8e6c9; }
         .cb-nachverfolgung { background: #fdecec; color: #b42318; border-color: #f3c7c3; }
 
+        /* Unterobjekt-Auswahl im Erfassungsformular (z.B. Ferienwohnung: 2-Zimmer / Studio) */
+        .subobjekt-bar { display: none; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 12px 15px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; }
+        .subobjekt-bar label { margin-bottom: 0; white-space: nowrap; }
+        .subobjekt-options { display: flex; flex-wrap: wrap; gap: 10px; }
+        .subobjekt-btn { background: #ffffff; color: var(--secondary); border: 1px solid #ccd1d9; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 0.95em; transition: 0.2s; }
+        .subobjekt-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .subobjekt-btn.active { background: var(--primary); border-color: var(--primary); color: #ffffff; }
+        .subobjekt-hint { font-size: 0.85em; color: #666; flex: 1; min-width: 220px; }
+        #unterobjektCheckboxes .filter-cb-label { white-space: nowrap; }
+        .subobjekt-tag { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 10px; background: #e8f0fe; color: var(--primary); font-size: 0.8em; font-weight: bold; }
+        .report-filter-hinweis { display: none; margin-bottom: 20px; padding: 12px 15px; background: #e8f0fe; border: 1px solid #d2e3fc; border-radius: 8px; color: var(--secondary); font-size: 0.9em; line-height: 1.5; }
+
         .global-filter-bar { display: flex; flex-wrap: wrap; gap: 20px; background: #e8f0fe; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d2e3fc; align-items: flex-end;}
         .filter-group { display: flex; flex-direction: column; gap: 8px; }
         .checkbox-container { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; height: 100%; }
@@ -138,6 +150,11 @@
             .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
             .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
             
+            /* Unterobjekt-Auswahl untereinander statt nebeneinander */
+            .subobjekt-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+            .subobjekt-options { width: 100%; }
+            .subobjekt-btn { flex: 1; }
+
             /* Buttons auf volle Breite ziehen (Daumen-freundlich) */
             .btn-main, .btn-cancel, .btn-reset, .btn-secondary, .event-form-actions button { width: 100% !important; margin-bottom: 5px; box-sizing: border-box; }
             .event-form-actions { flex-direction: column; width: 100%; gap: 10px; }
@@ -194,6 +211,12 @@
                 <div class="form-group col-5"><label>Soll-Konto</label><select id="sollKonto"></select></div>
                 <div class="form-group col-5"><label>Haben-Konto</label><select id="habenKonto"></select></div>
                 <div class="form-group col-2"><label>Betrag (CHF)</label><input type="number" id="betrag" step="0.01" placeholder="0.00"></div>
+            </div>
+
+            <div class="subobjekt-bar" id="unterobjektBar">
+                <label id="unterobjektLabel">Unterobjekt</label>
+                <div class="subobjekt-options" id="unterobjektOptionen"></div>
+                <span class="subobjekt-hint">Optional &ndash; ohne Auswahl wird die Buchung wie gewohnt nur dem Objekt zugewiesen. Ein Klick auf das aktive Unterobjekt hebt die Auswahl wieder auf.</span>
             </div>
 
             <div style="display:flex; gap:15px; align-items: center; flex-wrap: wrap; margin-top: 10px;">
@@ -263,6 +286,11 @@
                     </div>
                 </div>
                 
+                <div class="filter-group" id="unterobjektFilterContainer">
+                    <label><strong id="unterobjektFilterLabel">Unterobjekt:</strong></label>
+                    <div class="checkbox-container" id="unterobjektCheckboxes"></div>
+                </div>
+
                 <div class="filter-group" id="kontoFilterContainer">
                     <label><strong>Konto filtern:</strong></label>
                     <select id="filterKonto" onchange="wendeFilterAn()" style="padding: 10px; max-width: 220px; text-overflow: ellipsis;"></select>
@@ -309,6 +337,7 @@
         <div id="filterPlaceholderEr"></div>
         <div class="card">
             <h2>Erfolgsrechnung (ER)</h2>
+            <div class="report-filter-hinweis" id="erUnterobjektHinweis"></div>
             <div class="report-grid">
                 <div class="report-column">
                     <h3>Ertrag</h3>
@@ -332,6 +361,7 @@
         <div id="filterPlaceholderBilanz"></div>
         <div class="card">
             <h2>Bilanz <button class="btn-toggle-view" onclick="openEBModal()" style="font-size: 0.65em; padding: 5px 12px;">⚙️ Eröffnungsbilanz</button></h2>
+            <div class="report-filter-hinweis" id="bilanzUnterobjektHinweis"></div>
             <div class="report-grid">
                 <div class="report-column">
                     <h3>Aktiven</h3>
@@ -423,6 +453,12 @@
         window.logout = () => signOut(auth);
 
         const objekte = ["Creart", "Photographic", "Ferienwohnung"];
+
+        // Unterobjekte pro Objekt. Buchungen ohne Auswahl bleiben wie bisher
+        // nur dem Objekt selbst zugewiesen (unterobjekt = "").
+        const unterobjekte = {
+            "Ferienwohnung": ["2-Zimmer", "Studio"]
+        };
         
         const kontenplan = [
             { id: "1000", name: "Kasse", typ: "Aktiv" },
@@ -465,6 +501,7 @@
         let lokaleEB = []; 
         let aktuelleSortierung = { spalte: 'erstellt_am', richtung: 'desc' };
         let bearbeitungsModusId = null;
+        let aktuellesUnterobjekt = '';
         let istAbschlussAnsicht = false;
 
         let unsubscribeBuchungen = null;
@@ -504,6 +541,43 @@
             const year = document.getElementById('selectedYear').value;
             updateYearConstraints(year);
             ladeDaten();
+        };
+
+        function getUnterobjekteFuer(objekt) {
+            return unterobjekte[objekt] || [];
+        }
+
+        function getAktivesUnterobjekt() {
+            const objekt = document.getElementById('objekt').value;
+            return getUnterobjekteFuer(objekt).includes(aktuellesUnterobjekt) ? aktuellesUnterobjekt : '';
+        }
+
+        function renderUnterobjektAuswahl() {
+            const objekt = document.getElementById('objekt').value;
+            const optionen = getUnterobjekteFuer(objekt);
+            const bar = document.getElementById('unterobjektBar');
+            const container = document.getElementById('unterobjektOptionen');
+
+            if (!optionen.includes(aktuellesUnterobjekt)) aktuellesUnterobjekt = '';
+
+            if (optionen.length === 0) {
+                bar.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+
+            document.getElementById('unterobjektLabel').innerText = `Unterobjekt ${objekt}`;
+            bar.style.display = 'flex';
+            container.innerHTML = optionen.map(o => {
+                const aktiv = aktuellesUnterobjekt === o;
+                return `<button type="button" class="subobjekt-btn${aktiv ? ' active' : ''}" aria-pressed="${aktiv}" onclick="waehleUnterobjekt('${o}')">${o}</button>`;
+            }).join('');
+        }
+
+        // Nur eines gleichzeitig aktiv; ein Klick auf das aktive hebt die Auswahl auf.
+        window.waehleUnterobjekt = (wert) => {
+            aktuellesUnterobjekt = (aktuellesUnterobjekt === wert) ? '' : wert;
+            renderUnterobjektAuswahl();
         };
 
         window.toggleAnteilFields = () => {
@@ -593,6 +667,8 @@
             const year = document.getElementById('selectedYear').value;
             const oSel = document.getElementById('objekt');
             oSel.innerHTML = ''; objekte.forEach(o => oSel.innerHTML += `<option value="${o}">${o}</option>`);
+            oSel.onchange = () => { aktuellesUnterobjekt = ''; renderUnterobjektAuswahl(); };
+            renderUnterobjektAuswahl();
             const sSel = document.getElementById('sollKonto'), hSel = document.getElementById('habenKonto');
             sSel.innerHTML = ''; hSel.innerHTML = '';
             kontenplan.sort((a,b) => a.id - b.id).forEach(k => {
@@ -609,6 +685,17 @@
             objekte.forEach(obj => {
                 cbContainer.innerHTML += `<label class="filter-cb-label"><input type="checkbox" class="filter-cb" value="${obj}" checked onchange="wendeFilterAn()"> ${obj}</label>`;
             });
+            const subContainer = document.getElementById('unterobjektCheckboxes');
+            subContainer.innerHTML = '';
+            const objekteMitUnterobjekten = Object.keys(unterobjekte).filter(o => getUnterobjekteFuer(o).length > 0);
+            objekteMitUnterobjekten.forEach(objekt => {
+                getUnterobjekteFuer(objekt).forEach(u => {
+                    subContainer.innerHTML += `<label class="filter-cb-label"><input type="checkbox" class="filter-subobj-cb" value="${u}" onchange="wendeFilterAn()"> ${u}</label>`;
+                });
+            });
+            document.getElementById('unterobjektFilterLabel').innerText = `Unterobjekt (${objekteMitUnterobjekten.join(', ')}):`;
+            document.getElementById('unterobjektFilterContainer').style.display = objekteMitUnterobjekten.length > 0 ? 'flex' : 'none';
+
             const filterKonto = document.getElementById('filterKonto');
             filterKonto.innerHTML = '<option value="Alle">Alle Konten</option>';
             kontenplan.forEach(k => filterKonto.innerHTML += `<option value="${k.id}">${k.id} - ${k.name}</option>`);
@@ -617,6 +704,7 @@
         window.filterLoeschen = () => {
             const year = document.getElementById('selectedYear').value;
             document.querySelectorAll('.filter-cb').forEach(cb => cb.checked = true);
+            document.querySelectorAll('.filter-subobj-cb').forEach(cb => cb.checked = false);
             document.getElementById('filterKonto').value = 'Alle';
             
             document.getElementById('jFiltIntern').checked = false;
@@ -650,6 +738,7 @@
                 const ms = fallback ? new Date(fallback).getTime() : 0;
                 return Number.isNaN(ms) ? 0 : ms;
             }
+            if (feld === 'objekt') return `${eintrag.objekt || ''} ${eintrag.unterobjekt || ''}`.trim().toLowerCase();
             return (eintrag[feld] || '').toString().toLowerCase();
         }
         function zeigeSaveFeedback(text, typ = 'success') {
@@ -773,6 +862,7 @@
             const data = { 
                 datum_eingabe: d, 
                 objekt: document.getElementById('objekt').value, 
+                unterobjekt: getAktivesUnterobjekt(),
                 text: t, 
                 betrag: Math.round(parseFloat(b) * 100), 
                 soll: sollKonto,
@@ -817,6 +907,9 @@
             document.getElementById('anteilIntern').value = '';
             document.getElementById('anteilPrivat').value = '';
             
+            aktuellesUnterobjekt = '';
+            renderUnterobjektAuswahl();
+
             window.toggleAnteilFields();
             updateYearConstraints(document.getElementById('selectedYear').value);
         }
@@ -826,6 +919,8 @@
             const b = lokaleBuchungen.find(x => x.id === id); bearbeitungsModusId = id;
             document.getElementById('datum').value = b.datum_eingabe; 
             document.getElementById('objekt').value = b.objekt;
+            aktuellesUnterobjekt = b.unterobjekt || '';
+            renderUnterobjektAuswahl();
             document.getElementById('text').value = b.text; 
             document.getElementById('sollKonto').value = b.soll;
             document.getElementById('habenKonto').value = b.haben; 
@@ -891,6 +986,13 @@
             // 2. GLOBALE FILTER (Objekt & Datum)
             const ausgewaehlteObjekte = Array.from(document.querySelectorAll('.filter-cb:checked')).map(cb => cb.value);
             datenBasis = datenBasis.filter(b => ausgewaehlteObjekte.includes(b.objekt));
+
+            // Unterobjekt-Filter: ohne Auswahl bleibt alles sichtbar, sonst ausschliesslich
+            // Buchungen mit einem der gewaehlten Unterobjekte.
+            const aktiveUnterobjekte = Array.from(document.querySelectorAll('.filter-subobj-cb:checked')).map(cb => cb.value);
+            if (aktiveUnterobjekte.length > 0) {
+                datenBasis = datenBasis.filter(b => aktiveUnterobjekte.includes(b.unterobjekt || ''));
+            }
             
             const fVon = document.getElementById('filterDatumVon').value, fBis = document.getElementById('filterDatumBis').value;
             if(fVon) datenBasis = datenBasis.filter(b => b.datum_eingabe >= fVon);
@@ -907,7 +1009,11 @@
             if (!document.getElementById('rFiltNach').checked) {
                 datenReports = datenReports.filter(b => !b.nachverfolgung);
             }
-            berechneAbschluesse(datenReports, ausgewaehlteObjekte);
+            // Die Eroeffnungsbilanz wird nur pro Objekt gefuehrt, nicht pro Unterobjekt.
+            // Bei aktivem Unterobjekt-Filter bleiben die Startsalden deshalb aussen vor.
+            const ebObjekte = aktiveUnterobjekte.length > 0 ? [] : ausgewaehlteObjekte;
+            zeigeUnterobjektHinweis(aktiveUnterobjekte);
+            berechneAbschluesse(datenReports, ebObjekte);
             
             // 4. FILTER FÜR JOURNAL (Exklusive-Filter + Abschluss Ansicht)
             let datenJournal = [...datenBasis];
@@ -947,6 +1053,24 @@
             renderJournal(datenJournal);
         }
 
+        function zeigeUnterobjektHinweis(aktiveUnterobjekte) {
+            const erHinweis = document.getElementById('erUnterobjektHinweis');
+            const bilanzHinweis = document.getElementById('bilanzUnterobjektHinweis');
+
+            if (aktiveUnterobjekte.length === 0) {
+                erHinweis.style.display = 'none'; erHinweis.innerHTML = '';
+                bilanzHinweis.style.display = 'none'; bilanzHinweis.innerHTML = '';
+                return;
+            }
+
+            const liste = escapeHtml(aktiveUnterobjekte.join(', '));
+            const basis = `🔎 Gefiltert nach Unterobjekt: <strong>${liste}</strong> – es werden ausschliesslich Buchungen mit diesem Unterobjekt berücksichtigt.`;
+            erHinweis.style.display = 'block';
+            erHinweis.innerHTML = basis;
+            bilanzHinweis.style.display = 'block';
+            bilanzHinweis.innerHTML = `${basis} Die Startsalden der Eröffnungsbilanz werden pro Objekt und nicht pro Unterobjekt erfasst und sind hier deshalb nicht enthalten.`;
+        }
+
         function renderJournal(daten) {
             const body = document.getElementById('journalBody'); body.innerHTML = '';
             if(daten.length === 0) { body.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">Keine Buchungen gefunden.</td></tr>'; return; }
@@ -963,6 +1087,8 @@
                 if (b.privat) icons.push('🟩');
                 let iconStr = icons.length > 0 ? ' ' + icons.join(' ') : '';
                 
+                const objektAnzeige = escapeHtml(b.objekt) + (b.unterobjekt ? ` <span class="subobjekt-tag">${escapeHtml(b.unterobjekt)}</span>` : '');
+
                 let displayTxt = escapeHtml(b.text);
                 // Blende "(Teilbuchung)" aus, wenn die Abschluss Ansicht aktiv ist
                 if (b.is_split_part && !istAbschlussAnsicht) {
@@ -972,7 +1098,7 @@
                 body.innerHTML += `<tr ${trClass}>
                     <td>${formatDateTimeCH(b.erstellt_am)}</td>
                     <td>${formatDatumCH(b.datum_eingabe)}</td>
-                    <td>${escapeHtml(b.objekt)}</td>
+                    <td>${objektAnzeige}</td>
                     <td>${displayTxt}${iconStr}</td>
                     <td>${escapeHtml(b.soll)} (${escapeHtml(getKName(b.soll))})</td>
                     <td>${escapeHtml(b.haben)} (${escapeHtml(getKName(b.haben))})</td>
@@ -985,7 +1111,7 @@
             });
         }
 
-        function berechneAbschluesse(daten, aktiveObjekte) {
+        function berechneAbschluesse(daten, ebObjekte) {
             const year = document.getElementById('selectedYear').value;
             const salden = {}; 
             let tEbAktiv = 0;
@@ -993,7 +1119,7 @@
 
             kontenplan.forEach(k => {
                 salden[k.id] = 0; 
-                aktiveObjekte.forEach(obj => {
+                ebObjekte.forEach(obj => {
                     const ebEintrag = lokaleEB.find(e => e.id === `${year}_${k.id}_${obj}`);
                     if(ebEintrag) {
                         salden[k.id] += ebEintrag.betrag;
