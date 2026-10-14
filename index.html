@@ -95,21 +95,8 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        // NEU: setPersistence und die zwei Speichertypen importiert
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        import { auth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "./js/firebase.js";
         
-        const firebaseConfig = {
-            apiKey: "AIzaSyC4TnJ2SHBPwaB2E_NS_SYE0jZM2yZTjTs",
-            authDomain: "buchhaltung-9c1c9.firebaseapp.com",
-            projectId: "buchhaltung-9c1c9",
-            storageBucket: "buchhaltung-9c1c9.firebasestorage.app",
-            messagingSenderId: "401277655088",
-            appId: "1:401277655088:web:0ed07c93e335524ffe35f5"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
 
         // --- DER AUTO-REDIRECT ---
         // Prüft sofort beim Laden, ob du schon eingeloggt bist

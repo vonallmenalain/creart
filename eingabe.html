@@ -438,30 +438,9 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
+        import { db, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where } from "./js/firestore.js";
         
-        const firebaseConfig = {
-            apiKey: "AIzaSyC4TnJ2SHBPwaB2E_NS_SYE0jZM2yZTjTs",
-            authDomain: "buchhaltung-9c1c9.firebaseapp.com",
-            projectId: "buchhaltung-9c1c9",
-            storageBucket: "buchhaltung-9c1c9.firebasestorage.app",
-            messagingSenderId: "401277655088",
-            appId: "1:401277655088:web:0ed07c93e335524ffe35f5"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
-        enableIndexedDbPersistence(db).catch((err) => {
-            if (err.code === 'failed-precondition') {
-                console.warn('Mehrere Tabs offen. Offline-Cache funktioniert am besten in einem einzigen Tab.');
-            } else if (err.code === 'unimplemented') {
-                console.warn('Der aktuelle Browser unterstützt kein Caching.');
-            }
-        });
         
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -548,28 +527,12 @@
         }
         initJahresAuswahl();
 
+        // Die Echtzeit-Verbindungen bleiben offen, auch wenn der Tab im Hintergrund ist:
+        // Firestore berechnet dann nur geaenderte Dokumente. Ein Trennen und spaeteres
+        // Neuverbinden (nach mehr als 30 Minuten) wuerde dagegen alles neu lesen.
         let unsubscribeBuchungen = null;
         let unsubscribeEB = null;
         const SESSION_LAST_BUCHUNG_DATUM_KEY = 'creart_last_buchung_datum';
-
-        function stopRealtimeSubscriptions() {
-            if (unsubscribeBuchungen) {
-                unsubscribeBuchungen();
-                unsubscribeBuchungen = null;
-            }
-            if (unsubscribeEB) {
-                unsubscribeEB();
-                unsubscribeEB = null;
-            }
-        }
-
-        function handleVisibilityChange() {
-            if (document.hidden) {
-                stopRealtimeSubscriptions();
-                return;
-            }
-            ladeDaten();
-        }
 
         window.toggleAbschlussAnsicht = () => {
             istAbschlussAnsicht = !istAbschlussAnsicht;
@@ -881,11 +844,6 @@
         };
 
         function ladeDaten() {
-            if (document.hidden) {
-                stopRealtimeSubscriptions();
-                return;
-            }
-
             const year = document.getElementById('selectedYear').value;
             const startDate = `${year}-01-01`;
             const endDate = `${year}-12-31`;
@@ -919,8 +877,6 @@
                 updateView();
             });
         }
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         document.getElementById('btnBuchen').onclick = async () => {
             const btn = document.getElementById('btnBuchen');
