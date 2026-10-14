@@ -1,0 +1,63 @@
+name: Firestore-Regeln
+
+# Testet die Regeln bei jedem PR gegen den Emulator und veröffentlicht sie
+# nach dem Merge auf main (oder manuell über "Run workflow").
+on:
+  pull_request:
+    paths:
+      - 'firebase/**'
+      - '.github/workflows/firestore-rules.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'firebase/**'
+      - '.github/workflows/firestore-rules.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: firestore-rules-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Regeln testen
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firebase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run test:rules
+
+  deploy:
+    name: Regeln veröffentlichen
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firebase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+      - run: npm ci
+      - run: npm run deploy:rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
