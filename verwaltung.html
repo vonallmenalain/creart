@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verwaltung - CreArt & Ferienwohnung</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         :root {
@@ -66,6 +65,7 @@
             border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s;
         }
         .btn-main { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.02em; }
+        .btn-main:disabled, .btn-secondary:disabled { opacity: 0.7; cursor: wait; }
         .btn-main:hover { background: #219653; }
         .btn-secondary { background: #fff; color: var(--secondary); border: 1px solid var(--border); padding: 14px 24px; }
         .btn-secondary:hover { background: #f8fafc; }
@@ -213,6 +213,8 @@
         .fw-summary-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .fw-summary-card { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid var(--border); text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
         .fw-summary-card h4 { margin: 0 0 10px 0; color: var(--secondary); font-size: 0.95em; text-transform: uppercase; letter-spacing: 0.5px; }
+        .fw-summary-hint { margin: -8px 0 20px; color: #667085; font-size: 0.9em; }
+        .export-selected td { background: #f0fdf4; }
         .fw-summary-card .value { font-size: 1.8em; font-weight: bold; color: var(--primary); font-variant-numeric: tabular-nums; }
         .booking-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
         .booking-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s; width: 100%; box-sizing: border-box; }
@@ -312,11 +314,7 @@
 
     <div class="app-header">
         <h1 class="app-title">Verwaltung & Verkauf
-            <select id="selectedYear" class="year-select-title" onchange="changeYear()">
-                <option value="2026" selected>2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
-            </select>
+            <select id="selectedYear" class="year-select-title" onchange="changeYear()"></select>
         </h1>
         <div class="header-controls">
             <a href="eingabe.html" class="btn-switch">🔙 Zur Buchhaltung</a>
@@ -609,6 +607,7 @@
                 <div class="value chf" id="fwSumKurtaxe">CHF 0.00</div>
             </div>
         </div>
+        <div class="fw-summary-hint" id="fwSummaryHint"></div>
 
         <div class="card" style="background: transparent; border: none; box-shadow: none; padding: 0;">
             <div class="table-card-header" style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #eee;">
@@ -690,19 +689,19 @@
             <div class="form-grid" style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
                 <div class="form-group col-3">
                     <label>PLZ von</label>
-                    <input type="number" id="exportPlzVon" placeholder="z.B. 2000" oninput="renderExportPreview()">
+                    <input type="number" id="exportPlzVon" placeholder="z.B. 2000" oninput="renderExportPreviewVerzoegert()">
                 </div>
                 <div class="form-group col-3">
                     <label>PLZ bis</label>
-                    <input type="number" id="exportPlzBis" placeholder="z.B. 4000" oninput="renderExportPreview()">
+                    <input type="number" id="exportPlzBis" placeholder="z.B. 4000" oninput="renderExportPreviewVerzoegert()">
                 </div>
                 <div class="form-group col-3">
                     <label>Einzelne PLZ (Komma-getrennt)</label>
-                    <input type="text" id="exportPlz" placeholder="z.B. 3000, 3011" oninput="renderExportPreview()">
+                    <input type="text" id="exportPlz" placeholder="z.B. 3000, 3011" oninput="renderExportPreviewVerzoegert()">
                 </div>
                 <div class="form-group col-3">
                     <label>Ort (Komma-getrennt)</label>
-                    <input type="text" id="exportOrt" placeholder="z.B. Bern, Thun" oninput="renderExportPreview()">
+                    <input type="text" id="exportOrt" placeholder="z.B. Bern, Thun" oninput="renderExportPreviewVerzoegert()">
                 </div>
                 <div class="col-12" style="display: flex; gap: 10px; margin-top: 5px;">
                     <button class="btn-small" onclick="selectAllFilteredExport()">Alle sichtbaren auswählen</button>
@@ -743,7 +742,7 @@
                     Export: <strong id="fwExportCount">0</strong>
                 </span>
             </h2>
-            <p style="color: var(--secondary); margin-bottom: 20px;">Grenze die Buchungen nach Aufenthaltsdatum ein. Kosten- und Zahlungsfelder bleiben ausserhalb des Exports.</p>
+            <p style="color: var(--secondary); margin-bottom: 20px;">Grenze die Buchungen nach Aufenthaltsdatum ein. Enthalten sind alle Aufenthalte mit mindestens einer Übernachtung im gewählten Zeitraum – auch solche, die über den Monatswechsel gehen. Kosten- und Zahlungsfelder bleiben ausserhalb des Exports.</p>
 
             <div class="form-grid" style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
                 <div class="form-group col-4">
@@ -797,7 +796,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, where, getDocs, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, where, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -842,15 +841,51 @@
             if (unsubscribeFerienwohnung) { unsubscribeFerienwohnung(); unsubscribeFerienwohnung = null; }
         }
 
+        // Daten werden erst geladen, wenn ein Tab sie braucht. Einmal gestartete Quellen bleiben aktiv.
+        const QUELLEN_PRO_TAB = {
+            verkaeufe: ['verkaeufe'],
+            adressen: ['adressen', 'debitoren'],
+            debitoren: ['debitoren', 'adressen'],
+            ferienwohnung: ['ferienwohnung'],
+            photographic: []
+        };
+        const aktiveQuellen = new Set();
+        const ladeFunktionen = {
+            verkaeufe: () => ladeVerkaeufe(),
+            adressen: () => ladeAdressen(),
+            debitoren: () => ladeDebitoren(),
+            ferienwohnung: () => ladeFerienwohnung()
+        };
+        let aktiverTab = 'verkaeufe';
+        // Tabs, deren Daten sich geaendert haben, waehrend sie nicht sichtbar waren.
+        const veralteteTabs = new Set();
+        const renderFunktionen = {
+            verkaeufe: () => { renderEventListe(); renderMatrix(); },
+            adressen: () => renderAdressListe(),
+            debitoren: () => renderDebitorListe(),
+            ferienwohnung: () => window.renderFwListe()
+        };
+
+        function starteQuellenFuer(tabId) {
+            (QUELLEN_PRO_TAB[tabId] || []).forEach(quelle => {
+                if (aktiveQuellen.has(quelle)) return;
+                aktiveQuellen.add(quelle);
+                ladeFunktionen[quelle]();
+            });
+        }
+
+        function renderOderVormerken(tabId) {
+            if (aktiverTab === tabId) renderFunktionen[tabId]();
+            else veralteteTabs.add(tabId);
+        }
+
         function handleVisibilityChange() {
             if (document.hidden) {
                 stopRealtimeSubscriptions();
                 return;
             }
-            changeYear();
-            ladeFerienwohnung();
-            ladeAdressen();
-            ladeDebitoren();
+            // Nur die Verbindungen wieder aufnehmen. Formulare und Filter bleiben unangetastet.
+            aktiveQuellen.forEach(quelle => ladeFunktionen[quelle]());
         }
 
         let verkaeufeDaten = [];
@@ -865,13 +900,16 @@
         let bearbeitungsDebitorId = null;
         let bearbeitungsFwId = null;
 
-        let adressSortierung = { spalte: 'rechnungsdatum', richtung: 'desc' };
+        let adressSortierung = { spalte: 'nachname', richtung: 'asc' };
         let debitorSortierung = { spalte: 'nummer', richtung: 'desc' };
         let exportSort = { spalte: 'nachname', richtung: 'asc' }; // Sortierung fürs Export-Fenster
         let exportSelection = new Set(); // Speichert die IDs der zu exportierenden Adressen
 
+        let initialisiert = false;
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                if (initialisiert) return;
+                initialisiert = true;
                 init();
                 document.addEventListener('visibilitychange', handleVisibilityChange);
             } else {
@@ -884,8 +922,69 @@
         function formatDatumCH(datum) {
             if (!datum) return '-';
             const parts = String(datum).split('-');
-            if (parts.length !== 3) return datum;
+            if (parts.length !== 3) return escapeHtml(datum);
             return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
+        // Heutiges Datum als YYYY-MM-DD in lokaler Zeit (toISOString() liefert UTC und
+        // ergibt kurz nach Mitternacht noch das gestrige Datum).
+        function todayLocal() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        const ERSTES_JAHR = 2026;
+        function initJahresAuswahl() {
+            const sel = document.getElementById('selectedYear');
+            const aktuell = new Date().getFullYear();
+            const jahre = [];
+            for (let j = ERSTES_JAHR; j <= Math.max(aktuell + 1, ERSTES_JAHR); j++) jahre.push(j);
+            sel.innerHTML = jahre.map(j => `<option value="${j}">${j}</option>`).join('');
+            sel.value = String(Math.max(aktuell, ERSTES_JAHR));
+        }
+        initJahresAuswahl();
+
+        // Sortiert Texte nach Schweizer Regeln (Umlaute korrekt, Zahlen numerisch).
+        const textVergleich = new Intl.Collator('de-CH', { sensitivity: 'base', numeric: true }).compare;
+
+        function verzoegert(fn, ms = 150) {
+            let timer = null;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), ms);
+            };
+        }
+
+        // Sperrt einen Speichern-Knopf, bis die Aktion fertig ist (verhindert Doppelklick-Duplikate).
+        async function mitGesperrtemKnopf(btnId, aktion) {
+            const btn = document.getElementById(btnId);
+            if (!btn || btn.disabled) return;
+            const text = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = 'Speichert…';
+            try {
+                return await aktion();
+            } finally {
+                btn.disabled = false;
+                // Nur zuruecksetzen, wenn die Aktion den Text nicht selbst neu gesetzt hat.
+                if (btn.innerText === 'Speichert…') btn.innerText = text;
+            }
+        }
+
+        // Die Excel-Bibliothek ist gross und wird nur fuer Exporte gebraucht.
+        let xlsxLaden = null;
+        function ladeXlsx() {
+            if (window.XLSX) return Promise.resolve(window.XLSX);
+            if (!xlsxLaden) {
+                xlsxLaden = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                    script.onload = () => resolve(window.XLSX);
+                    script.onerror = () => { xlsxLaden = null; reject(new Error('Excel-Bibliothek konnte nicht geladen werden.')); };
+                    document.head.appendChild(script);
+                });
+            }
+            return xlsxLaden;
         }
 
         function formatErfassung(t) {
@@ -1114,16 +1213,15 @@
             document.getElementById(tabId).classList.add('active');
             if(ev) ev.currentTarget.classList.add('active');
 
-            if (tabId === 'debitoren' && typeof renderDebitorListe === 'function') {
-                document.getElementById('debitorStatusFilter').value = 'offen';
-                renderDebitorListe();
-            }
+            aktiverTab = tabId;
+            starteQuellenFuer(tabId);
+            if (veralteteTabs.delete(tabId)) renderFunktionen[tabId]();
         };
 
         window.changeYear = () => {
             const year = document.getElementById('selectedYear').value;
             const currentYear = new Date().getFullYear().toString();
-            const today = new Date().toISOString().split('T')[0];
+            const today = todayLocal();
 
             const start = `${year}-01-01`;
             const defaultDate = (year === currentYear) ? today : start;
@@ -1140,21 +1238,19 @@
             resetEventForm({ collapse: true, preserveDate: true });
             resetDebitorForm({ collapse: true, preserveDate: true });
 
+            aktiveQuellen.add('verkaeufe');
             ladeVerkaeufe();
         };
 
         function init() {
             const tbody = document.getElementById('produkteEingabeBody');
-            tbody.innerHTML = '';
-            produkte.forEach((produkt, index) => {
-                tbody.innerHTML += `
+            tbody.innerHTML = produkte.map((produkt, index) => `
                     <tr>
                         <td>${produkt}</td>
                         <td class="center"><input type="number" class="tbl-input anzahl-input" data-idx="${index}" step="1"></td>
                         <td class="right"><input type="number" class="tbl-input betrag-input" data-idx="${index}" step="0.01"></td>
                     </tr>
-                `;
-            });
+                `).join('');
             document.querySelectorAll('.anzahl-input, .betrag-input').forEach(input => input.addEventListener('input', berechneEingabeTotal));
 
             baueMatrixHeader();
@@ -1166,10 +1262,10 @@
             updateDebitorKundenStatus();
             syncDebitorOnlineLabel();
 
-            document.getElementById('adressSuche')?.addEventListener('input', renderAdressListe);
-            document.getElementById('debitorSuche')?.addEventListener('input', renderDebitorListe);
+            document.getElementById('adressSuche')?.addEventListener('input', verzoegert(renderAdressListe));
+            document.getElementById('debitorSuche')?.addEventListener('input', verzoegert(renderDebitorListe));
             document.getElementById('debitorStatusFilter')?.addEventListener('change', renderDebitorListe);
-            document.getElementById('debitorKundenSuche')?.addEventListener('input', renderDebitorKundenTreffer);
+            document.getElementById('debitorKundenSuche')?.addEventListener('input', verzoegert(renderDebitorKundenTreffer));
             document.addEventListener('click', (ev) => {
                 const wrap = document.getElementById('matrixFilterWrap');
                 const dropdown = document.getElementById('matrixFilterDropdown');
@@ -1183,13 +1279,11 @@
             setCollapsibleState('debitorFormCard', false, 'debitorFormToggleLabel', 'debitorFormToggleIcon');
             setCollapsibleState('fwFormCard', false, 'fwFormToggleLabel', 'fwFormToggleIcon');
 
-            document.getElementById('fwFilterVon').value = new Date().toISOString().split('T')[0];
+            document.getElementById('fwFilterVon').value = todayLocal();
 
+            // Startet nur die Daten fuer den ersten Tab (Verkaeufe); die anderen beim Oeffnen.
             changeYear();
-            ladeFerienwohnung();
             renderMatrixFilterControls();
-            ladeAdressen();
-            ladeDebitoren();
         }
 
         function berechneEingabeTotal() {
@@ -1211,12 +1305,11 @@
             const summary = document.getElementById('matrixFilterSummary');
             if (!list || !summary) return;
 
-            const marktItems = matrixFilterState.marktNamen.map((name) => {
+            const marktItems = matrixFilterState.marktNamen.map((name, index) => {
                 const key = getMarketFilterKey(name);
-                const encodedKey = encodeURIComponent(key);
                 return `
                     <label class="matrix-filter-item">
-                        <input type="checkbox" ${matrixFilterState.ausgewaehlteMaerkte.has(key) ? 'checked' : ''} onchange="toggleMatrixMarktFilter('${encodedKey}', this.checked)">
+                        <input type="checkbox" ${matrixFilterState.ausgewaehlteMaerkte.has(key) ? 'checked' : ''} onchange="toggleMatrixMarktFilter(${index}, this.checked)">
                         <span>Markt: ${escapeHtml(name)}</span>
                     </label>
                 `;
@@ -1243,8 +1336,10 @@
             document.getElementById('matrixFilterDropdown')?.classList.toggle('open');
         };
 
-        window.toggleMatrixMarktFilter = (encodedMarktKey, checked) => {
-            const marktKey = decodeURIComponent(encodedMarktKey);
+        window.toggleMatrixMarktFilter = (index, checked) => {
+            const name = matrixFilterState.marktNamen[index];
+            if (name === undefined) return;
+            const marktKey = getMarketFilterKey(name);
             if (checked) matrixFilterState.ausgewaehlteMaerkte.add(marktKey);
             else matrixFilterState.ausgewaehlteMaerkte.delete(marktKey);
             renderMatrixFilterControls();
@@ -1302,7 +1397,7 @@
             const existingDate = document.getElementById('eventDatum').value;
             const selectedYear = document.getElementById('selectedYear').value;
             const yearStart = `${selectedYear}-01-01`;
-            const today = new Date().toISOString().split('T')[0];
+            const today = todayLocal();
             const defaultDate = (selectedYear === new Date().getFullYear().toString()) ? today : yearStart;
             bearbeitungsEventId = null;
             document.getElementById('eventTyp').value = 'markt';
@@ -1373,7 +1468,8 @@
             }
         };
 
-        window.speichereEvent = async () => {
+        window.speichereEvent = () => mitGesperrtemKnopf('saveEventBtn', speichereEventIntern);
+        async function speichereEventIntern() {
             const typ = document.getElementById('eventTyp').value;
             const datum = document.getElementById('eventDatum').value;
             const eventName = document.getElementById('eventName').value.trim();
@@ -1403,9 +1499,10 @@
                 }
                 resetEventForm({ collapse: true, preserveDate: true });
             } catch (error) {
+                console.error(error);
                 showToast('Fehler beim Speichern des Events.', 'error');
             }
-        };
+        }
 
         function renderEventListe() {
             const daten = [...verkaeufeDaten].sort((a, b) => (b.datum || '').localeCompare(a.datum || '') || normText(a.event_name).localeCompare(normText(b.event_name), 'de-CH'));
@@ -1492,10 +1589,25 @@
             document.getElementById('kundeProdukte').value = adresse.produkte || '';
         }
 
+        // Debitoren pro Kunde, einmal pro Datenaenderung aufgebaut (statt bei jeder Adresse
+        // und jedem Tastendruck alle Debitoren zu durchsuchen).
+        let historyByKunde = new Map();
+        const adressSuchtextCache = new Map();
+
+        function baueHistoryIndex() {
+            const index = new Map();
+            debitorenDaten.forEach(debitor => {
+                if (!debitor.kunde_id) return;
+                if (!index.has(debitor.kunde_id)) index.set(debitor.kunde_id, []);
+                index.get(debitor.kunde_id).push(debitor);
+            });
+            index.forEach(liste => liste.sort((a, b) => (b.rechnungsdatum || '').localeCompare(a.rechnungsdatum || '') || textVergleich(a.nachname || '', b.nachname || '')));
+            historyByKunde = index;
+            adressSuchtextCache.clear();
+        }
+
         function getHistoryForKunde(kundeId) {
-            return debitorenDaten
-                .filter(debitor => debitor.kunde_id === kundeId)
-                .sort((a, b) => (b.rechnungsdatum || '').localeCompare(a.rechnungsdatum || '') || normText(a.nachname).localeCompare(normText(b.nachname), 'de-CH'));
+            return historyByKunde.get(kundeId) || [];
         }
 
         function getHistorySummaryForAdresse(adresse) {
@@ -1508,13 +1620,17 @@
         }
 
         function getAdressSearchText(adresse) {
+            if (adressSuchtextCache.has(adresse.id)) return adressSuchtextCache.get(adresse.id);
             const history = getHistoryForKunde(adresse.id).map(d => `${d.produkte || ''} ${d.rechnungsdatum || ''}`).join(' ');
-            return normText(`${adresse.vorname || ''} ${adresse.nachname || ''} ${adresse.ort || ''} ${adresse.produkte || ''} ${history}`);
+            const text = normText(`${adresse.vorname || ''} ${adresse.nachname || ''} ${adresse.ort || ''} ${adresse.produkte || ''} ${history}`);
+            adressSuchtextCache.set(adresse.id, text);
+            return text;
         }
 
         window.abbrechenAdresseBearbeitung = () => resetAdressForm({ collapse: true });
 
-        window.speichereAdresse = async () => {
+        window.speichereAdresse = () => mitGesperrtemKnopf('saveAdressBtn', speichereAdresseIntern);
+        async function speichereAdresseIntern() {
             const payload = {
                 vorname: document.getElementById('kundeVorname').value.trim(),
                 nachname: document.getElementById('kundeNachname').value.trim(),
@@ -1538,9 +1654,10 @@
                 }
                 resetAdressForm({ collapse: true });
             } catch (error) {
+                console.error(error);
                 showToast('Fehler beim Speichern der Adresse.', 'error');
             }
-        };
+        }
 
         window.bearbeiteAdresse = (adressId) => {
             const adresse = adressenDaten.find(a => a.id === adressId);
@@ -1552,10 +1669,32 @@
             document.getElementById('adressFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
+        function baueAdressHistoryHtml(adresse) {
+            const history = getHistoryForKunde(adresse.id);
+            const historyHtml = history.length === 0
+                ? '<div class="muted">Noch keine Bestellungen zu diesem Kunden erfasst.</div>'
+                : history.map(item => `
+                    <div class="history-item">
+                        <strong>${formatDatumCH(item.rechnungsdatum)} · ${escapeHtml(item.nummer || 'ohne Nummer')}</strong>
+                        <div>${escapeHtml(item.produkte || '—').replace(/\n/g, '<br>')}</div>
+                        <div class="history-meta">Betrag: CHF ${formatCHF(item.betrag_rappen || 0)} · Bezahlt: ${escapeHtml(item.bezahlt_status || 'Nein')}</div>
+                    </div>
+                `).join('');
+            return `<td colspan="7"><div class="history-meta" style="margin-bottom: 12px;">Kunde ${escapeHtml(adresse.kundennummer || 'ohne ID')}</div><div class="history-grid">${historyHtml}</div></td>`;
+        }
+
+        // Die Historie-Zeile wird erst beim Aufklappen erzeugt; das haelt die Adressliste schlank.
         window.toggleAdressHistory = (adressId) => {
-            const row = document.getElementById(`adressHistory_${adressId}`);
-            if (!row) return;
-            row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+            const vorhanden = document.getElementById(`adressHistory_${adressId}`);
+            if (vorhanden) { vorhanden.remove(); return; }
+            const adresse = adressenDaten.find(a => a.id === adressId);
+            const zeile = document.getElementById(`adressRow_${adressId}`);
+            if (!adresse || !zeile) return;
+            const details = document.createElement('tr');
+            details.id = `adressHistory_${adressId}`;
+            details.className = 'details-row';
+            details.innerHTML = baueAdressHistoryHtml(adresse);
+            zeile.after(details);
         };
 
         window.loescheAdresse = async (adressId) => {
@@ -1597,13 +1736,10 @@
                 daten = daten.filter(adresse => getAdressSearchText(adresse).includes(suchbegriff));
             }
 
-            daten.sort((a, b) => {
-                const aWert = normText(a[adressSortierung.spalte]);
-                const bWert = normText(b[adressSortierung.spalte]);
-                if (aWert < bWert) return adressSortierung.richtung === 'asc' ? -1 : 1;
-                if (aWert > bWert) return adressSortierung.richtung === 'asc' ? 1 : -1;
-                return normText(a.nachname).localeCompare(normText(b.nachname), 'de-CH');
-            });
+            const richtung = adressSortierung.richtung === 'asc' ? 1 : -1;
+            daten.sort((a, b) =>
+                richtung * textVergleich(String(a[adressSortierung.spalte] || ''), String(b[adressSortierung.spalte] || ''))
+                || textVergleich(a.nachname || '', b.nachname || ''));
 
             document.getElementById('adressCountBadge').innerText = `${daten.length} ${daten.length === 1 ? 'Eintrag' : 'Einträge'}`;
             updateAdressSortIcons();
@@ -1614,19 +1750,9 @@
             }
 
             tbody.innerHTML = daten.map(adresse => {
-                const history = getHistoryForKunde(adresse.id);
                 const historySummary = getHistorySummaryForAdresse(adresse);
-                const historyHtml = history.length === 0
-                    ? '<div class="muted">Noch keine Bestellungen zu diesem Kunden erfasst.</div>'
-                    : history.map(item => `
-                        <div class="history-item">
-                            <strong>${formatDatumCH(item.rechnungsdatum)} · ${escapeHtml(item.nummer || 'ohne Nummer')}</strong>
-                            <div>${escapeHtml(item.produkte || '—').replace(/\n/g, '<br>')}</div>
-                            <div class="history-meta">Betrag: CHF ${formatCHF(item.betrag_rappen || 0)} · Bezahlt: ${escapeHtml(item.bezahlt_status || 'Nein')}</div>
-                        </div>
-                    `).join('');
                 return `
-                    <tr>
+                    <tr id="adressRow_${adresse.id}">
                         <td>${escapeHtml(adresse.vorname || '')}</td>
                         <td>${escapeHtml(adresse.nachname || '')}</td>
                         <td>${escapeHtml(adresse.strasse || '')}</td>
@@ -1644,12 +1770,16 @@
                             </div>
                         </td>
                     </tr>
-                    <tr id="adressHistory_${adresse.id}" class="details-row" style="display:none;"><td colspan="7"><div class="history-meta" style="margin-bottom: 12px;">Kunde ${escapeHtml(adresse.kundennummer || 'ohne ID')}</div><div class="history-grid">${historyHtml}</div></td></tr>
                 `;
             }).join('');
         }
 
+        // Ergaenzt fehlende Kundennummern einmal pro Seitenaufruf im Hintergrund
+        // (nicht bei jedem Datenupdate und ohne das Zeichnen der Liste zu blockieren).
+        let kundenNummernGeprueft = false;
         async function ensureKundenNummern() {
+            if (kundenNummernGeprueft) return;
+            kundenNummernGeprueft = true;
             const ohneNummer = adressenDaten.filter(adresse => !adresse.kundennummer);
             if (ohneNummer.length === 0) return;
             let nextNumber = adressenDaten.reduce((max, adresse) => Math.max(max, parseCodeNumber(adresse.kundennummer, 0)), 0);
@@ -1665,14 +1795,15 @@
                 return;
             }
             if (unsubscribeAdressen) unsubscribeAdressen();
-            adressenGeladen = false;
-            unsubscribeAdressen = onSnapshot(collection(db, 'kunden_adressen'), async (snap) => {
+            if (!adressenGeladen) document.getElementById('adressListeBody').innerHTML = '<tr><td colspan="7" class="center muted" style="padding: 20px;">Lade Adressen…</td></tr>';
+            unsubscribeAdressen = onSnapshot(collection(db, 'kunden_adressen'), (snap) => {
                 adressenDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                await ensureKundenNummern();
                 adressenGeladen = true;
-                renderAdressListe();
+                adressSuchtextCache.clear();
+                ensureKundenNummern();
+                renderOderVormerken('adressen');
                 renderDebitorKundenTreffer();
-                renderDebitorListe();
+                updateDebitorKundenStatus();
 
                 // Falls das Export-Fenster offen ist, die Vorschau updaten
                 if(document.getElementById('exportModal').style.display === 'flex') {
@@ -1687,6 +1818,8 @@
             }, (error) => {
                 console.error(error);
                 adressenGeladen = false;
+                document.getElementById('adressListeBody').innerHTML = '<tr><td colspan="7" class="center muted" style="padding: 20px;">Adressen konnten nicht geladen werden. Bitte Seite neu laden.</td></tr>';
+                showToast('Adressen konnten nicht geladen werden.', 'error');
                 if (document.getElementById('duplicateModal').style.display === 'flex') {
                     setDuplicateModalState({ status: 'Die Adressdaten konnten nicht geladen werden. Bitte später nochmals versuchen.', showConflict: false, showEdit: false, showActions: false });
                 }
@@ -1712,7 +1845,8 @@
             const plzVon = parseInt(document.getElementById('exportPlzVon').value) || null;
             const plzBis = parseInt(document.getElementById('exportPlzBis').value) || null;
 
-            let filtered = adressenDaten;
+            // Kopie, damit die Sortierung unten nicht die Originalliste veraendert.
+            let filtered = [...adressenDaten];
 
             // Range Filter PLZ
             if (plzVon !== null) {
@@ -1736,21 +1870,13 @@
 
             // Sortierung anwenden
             if (exportSort.spalte) {
+                const richtung = exportSort.richtung === 'asc' ? 1 : -1;
                 filtered.sort((a, b) => {
-                    const valA = normText(a[exportSort.spalte]);
-                    const valB = normText(b[exportSort.spalte]);
-
                     // Numerische Sortierung für PLZ
                     if (exportSort.spalte === 'plz') {
-                        const numA = parseInt(valA) || 0;
-                        const numB = parseInt(valB) || 0;
-                        return exportSort.richtung === 'asc' ? numA - numB : numB - numA;
+                        return richtung * ((parseInt(a.plz) || 0) - (parseInt(b.plz) || 0));
                     }
-
-                    // Alphabetische Sortierung
-                    if (valA < valB) return exportSort.richtung === 'asc' ? -1 : 1;
-                    if (valA > valB) return exportSort.richtung === 'asc' ? 1 : -1;
-                    return 0;
+                    return richtung * textVergleich(String(a[exportSort.spalte] || ''), String(b[exportSort.spalte] || ''));
                 });
             }
 
@@ -1772,14 +1898,14 @@
             document.getElementById('exportModal').style.display = 'none';
         };
 
-        window.toggleExportItem = (id) => {
-            if (exportSelection.has(id)) {
-                exportSelection.delete(id);
-            } else {
-                exportSelection.add(id);
-            }
-            window.renderExportPreview(); // Tabelle neu zeichnen
+        // Aendert nur die betroffene Zeile und den Zaehler statt die ganze Tabelle neu zu zeichnen.
+        window.toggleExportItem = (id, checkbox) => {
+            if (checkbox.checked) exportSelection.add(id);
+            else exportSelection.delete(id);
+            checkbox.closest('tr')?.classList.toggle('export-selected', checkbox.checked);
+            document.getElementById('exportSelectionCount').innerText = exportSelection.size;
         };
+        window.renderExportPreviewVerzoegert = verzoegert(() => window.renderExportPreview());
 
         window.selectAllFilteredExport = () => {
             const filtered = getFilteredExportData();
@@ -1808,13 +1934,12 @@
             } else {
                 tbody.innerHTML = filtered.map(a => {
                     const isSelected = exportSelection.has(a.id);
-                    const rowBg = isSelected ? '#f0fdf4' : 'transparent';
                     return `
-                        <tr style="background: ${rowBg}; transition: 0.2s;">
+                        <tr class="${isSelected ? 'export-selected' : ''}">
                             <td class="center">
                                 <input type="checkbox" style="transform: scale(1.3); cursor: pointer;"
                                        ${isSelected ? 'checked' : ''}
-                                       onchange="toggleExportItem('${a.id}')">
+                                       onchange="toggleExportItem('${a.id}', this)">
                             </td>
                             <td>${escapeHtml(a.vorname)}</td>
                             <td>${escapeHtml(a.nachname)}</td>
@@ -1830,7 +1955,7 @@
             document.getElementById('exportSelectionCount').innerText = exportSelection.size;
         };
 
-        window.executeExport = () => {
+        window.executeExport = async () => {
             if (exportSelection.size === 0) {
                 showToast('Bitte wähle mindestens eine Adresse für den Export aus. Nutze die Filter und die Checkboxen oder den Button "Alle sichtbaren auswählen".', 'warning');
                 return;
@@ -1848,11 +1973,12 @@
                 }));
 
             try {
+                const XLSX = await ladeXlsx();
                 const worksheet = XLSX.utils.json_to_sheet(exportData);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Adressen");
 
-                const today = new Date().toISOString().split('T')[0];
+                const today = todayLocal();
                 XLSX.writeFile(workbook, `Adressen_Export_${today}.xlsx`);
 
                 closeExportModal();
@@ -1890,7 +2016,7 @@
             const kunde = getSelectedKunde();
             const statusEl = document.getElementById('debitorKundenStatus');
             if (kunde) {
-                statusEl.innerHTML = `<span class="status-chip ja">Kunde verknüpft</span> <span style="margin-left: 5px;">Ausgewählt: <b>${kunde.kundennummer || 'ohne Nr.'}</b> · ${getCustomerDisplayName(kunde)}${kunde.ort ? ` · ${kunde.ort}` : ''}</span>`;
+                statusEl.innerHTML = `<span class="status-chip ja">Kunde verknüpft</span> <span style="margin-left: 5px;">Ausgewählt: <b>${escapeHtml(kunde.kundennummer || 'ohne Nr.')}</b> · ${escapeHtml(getCustomerDisplayName(kunde))}${kunde.ort ? ` · ${escapeHtml(kunde.ort)}` : ''}</span>`;
             } else {
                 statusEl.innerHTML = `<span class="status-chip neu">Wird neu angelegt</span> <span style="margin-left: 5px;">Kein bestehender Kunde ausgewählt. Beim Speichern wird ein neuer Kunde erstellt.</span>`;
             }
@@ -1900,7 +2026,7 @@
             const existingDate = document.getElementById('debitorDatum').value;
             const selectedYear = document.getElementById('selectedYear').value;
             const currentYear = new Date().getFullYear().toString();
-            const today = new Date().toISOString().split('T')[0];
+            const today = todayLocal();
             const defaultDate = (selectedYear === currentYear) ? today : `${selectedYear}-01-01`;
 
             bearbeitungsDebitorId = null;
@@ -1972,7 +2098,7 @@
 
             const selectedYear = document.getElementById('selectedYear').value;
             const currentYear = new Date().getFullYear().toString();
-            const today = new Date().toISOString().split('T')[0];
+            const today = todayLocal();
             document.getElementById('debitorDatum').value = (selectedYear === currentYear) ? today : `${selectedYear}-01-01`;
 
             renderDebitorKundenTreffer();
@@ -2041,7 +2167,8 @@
             return 'ja';
         }
 
-        window.speichereDebitor = async () => {
+        window.speichereDebitor = () => mitGesperrtemKnopf('saveDebitorBtn', speichereDebitorIntern);
+        async function speichereDebitorIntern() {
             const rechnungsdatum = document.getElementById('debitorDatum').value;
             const nummer = document.getElementById('debitorNummer').value.trim();
             const nachname = document.getElementById('debitorNachname').value.trim();
@@ -2058,7 +2185,7 @@
                 vorname: document.getElementById('debitorVorname').value.trim(), nachname,
                 strasse: document.getElementById('debitorStrasse').value.trim(), plz: document.getElementById('debitorPlz').value.trim(), ort: document.getElementById('debitorOrt').value.trim(),
                 produkte: document.getElementById('debitorProdukte').value.trim(), betrag_rappen: Math.round(betrag * 100),
-                bezahlt_status: document.getElementById('debitorBezahlt').value, mahnung: document.getElementById('debitorMahnung').value, aktualisiert_am: serverTimestamp()
+                bezahlt_status: document.getElementById('debitorBezahlt').value, mahnung: document.getElementById('debitorMahnung').value.trim(), aktualisiert_am: serverTimestamp()
             };
 
             try {
@@ -2072,8 +2199,8 @@
                     showToast(customerLink.created_customer ? 'Debitor gespeichert und neuer Kunde automatisch angelegt.' : 'Debitor erfolgreich gespeichert.', 'success');
                 }
                 resetDebitorForm({ collapse: true, preserveDate: true });
-            } catch (error) { showToast('Fehler beim Speichern des Debitors.', 'error'); }
-        };
+            } catch (error) { console.error(error); showToast('Fehler beim Speichern des Debitors.', 'error'); }
+        }
 
         window.bearbeiteDebitor = (debitorId) => {
             const debitor = debitorenDaten.find(d => d.id === debitorId);
@@ -2133,9 +2260,9 @@
                 const aVal = getDebitorSortValue(a, debitorSortierung.spalte);
                 const bVal = getDebitorSortValue(b, debitorSortierung.spalte);
                 if (typeof aVal === 'number' || typeof bVal === 'number') { const diff = Number(aVal) - Number(bVal); return debitorSortierung.richtung === 'asc' ? diff : -diff; }
-                if (aVal < bVal) return debitorSortierung.richtung === 'asc' ? -1 : 1;
-                if (aVal > bVal) return debitorSortierung.richtung === 'asc' ? 1 : -1;
-                return normText(a.nachname).localeCompare(normText(b.nachname), 'de-CH');
+                const res = textVergleich(String(aVal), String(bVal));
+                if (res !== 0) return debitorSortierung.richtung === 'asc' ? res : -res;
+                return textVergleich(a.nachname || '', b.nachname || '');
             });
 
             document.getElementById('debitorCountBadge').innerText = `${daten.length} ${daten.length === 1 ? 'Eintrag' : 'Einträge'}`;
@@ -2172,7 +2299,11 @@
             }).join('');
         }
 
+        // Wie bei den Kundennummern: einmal pro Seitenaufruf im Hintergrund.
+        let debitorIdsGeprueft = false;
         async function ensureDebitorIds() {
+            if (debitorIdsGeprueft) return;
+            debitorIdsGeprueft = true;
             const ohneId = debitorenDaten.filter(debitor => !debitor.debitor_id);
             if (ohneId.length === 0) return;
             const maxByYear = {};
@@ -2194,11 +2325,17 @@
                 return;
             }
             if (unsubscribeDebitoren) unsubscribeDebitoren();
-            unsubscribeDebitoren = onSnapshot(collection(db, 'debitoren'), async (snap) => {
+            if (debitorenDaten.length === 0) document.getElementById('debitorListeBody').innerHTML = '<tr><td colspan="13" class="center muted" style="padding: 20px;">Lade Debitoren…</td></tr>';
+            unsubscribeDebitoren = onSnapshot(collection(db, 'debitoren'), (snap) => {
                 debitorenDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                await ensureDebitorIds();
-                renderDebitorListe();
-                renderAdressListe();
+                baueHistoryIndex();
+                ensureDebitorIds();
+                renderOderVormerken('debitoren');
+                renderOderVormerken('adressen');
+            }, (error) => {
+                console.error(error);
+                document.getElementById('debitorListeBody').innerHTML = '<tr><td colspan="13" class="center muted" style="padding: 20px;">Debitoren konnten nicht geladen werden. Bitte Seite neu laden.</td></tr>';
+                showToast('Debitoren konnten nicht geladen werden.', 'error');
             });
         }
 
@@ -2217,8 +2354,11 @@
                 verkaeufeDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 syncMatrixFilterState();
                 renderMatrixFilterControls();
-                renderEventListe();
-                renderMatrix();
+                renderOderVormerken('verkaeufe');
+            }, (error) => {
+                console.error(error);
+                document.getElementById('loadingVerkaeufe').style.display = 'none';
+                showToast('Verkäufe konnten nicht geladen werden.', 'error');
             });
         }
 
@@ -2236,7 +2376,7 @@
         function renderMatrix() {
             const { matrix, jahresTotals } = berechneJahresuebersichtSummen();
             const tbody = document.getElementById('matrixBody');
-            tbody.innerHTML = '';
+            const zeilen = [];
 
             for (let monat = 1; monat <= 12; monat += 1) {
                 const monatKey = String(monat);
@@ -2246,8 +2386,9 @@
                     row += `<td class="center col-border">${data.anzahl !== 0 ? data.anzahl : '-'}</td><td class="right chf">${data.betrag !== 0 ? formatCHF(data.betrag) : ''}</td>`;
                 });
                 row += `<td class="center col-border col-total" id="monat_total_anzahl_${monat}">${matrix[monatKey].anzahl !== 0 ? matrix[monatKey].anzahl : '-'}</td><td class="right chf col-total" id="monat_total_betrag_${monat}">${matrix[monatKey].betrag !== 0 ? formatCHF(matrix[monatKey].betrag) : '-'}</td></tr>`;
-                tbody.innerHTML += row;
+                zeilen.push(row);
             }
+            tbody.innerHTML = zeilen.join('');
 
             let footer = '<tr class="row-total"><td>Total Jahr</td>';
             produkte.forEach((produkt, produktIndex) => {
@@ -2277,24 +2418,21 @@
             return cleanDuplicateText(value).replace(/\bstrasse\b/g, 'strasse').replace(/\s+/g, ' ');
         }
 
+        // Erwartet bereits bereinigte Texte (aus getDuplicateParts).
         function duplicateSimilarity(a, b) {
-            a = cleanDuplicateText(a);
-            b = cleanDuplicateText(b);
             if (!a && !b) return 1;
             if (!a || !b) return 0;
             if (a === b) return 1;
-            const rows = Array.from({ length: a.length + 1 }, (_, i) => [i]);
-            for (let j = 1; j <= b.length; j += 1) rows[0][j] = j;
+            // Levenshtein-Distanz mit nur zwei Zeilen statt der ganzen Matrix.
+            let vorher = Array.from({ length: b.length + 1 }, (_, j) => j);
             for (let i = 1; i <= a.length; i += 1) {
+                const aktuell = [i];
                 for (let j = 1; j <= b.length; j += 1) {
-                    rows[i][j] = Math.min(
-                        rows[i - 1][j] + 1,
-                        rows[i][j - 1] + 1,
-                        rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-                    );
+                    aktuell[j] = Math.min(vorher[j] + 1, aktuell[j - 1] + 1, vorher[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
                 }
+                vorher = aktuell;
             }
-            return 1 - (rows[a.length][b.length] / Math.max(a.length, b.length));
+            return 1 - (vorher[b.length] / Math.max(a.length, b.length));
         }
 
         function getDuplicateParts(adresse) {
@@ -2315,9 +2453,7 @@
             };
         }
 
-        function arePotentialDuplicates(a, b) {
-            const aParts = getDuplicateParts(a);
-            const bParts = getDuplicateParts(b);
+        function arePotentialDuplicates(aParts, bParts) {
 
             const sameFullName = !!aParts.fullName && aParts.fullName === bParts.fullName;
             const sameLastName = !!aParts.nachname && aParts.nachname === bParts.nachname;
@@ -2325,12 +2461,13 @@
             const sameAddress = !!aParts.addressKey && aParts.addressKey === bParts.addressKey;
             const sameStreet = !!aParts.strasse && aParts.strasse === bParts.strasse;
             const samePlzOrt = !!aParts.plzOrtKey && aParts.plzOrtKey === bParts.plzOrtKey;
-            const similarFullName = aParts.fullName.length >= 6 && bParts.fullName.length >= 6 && duplicateSimilarity(aParts.fullName, bParts.fullName) >= 0.88;
 
             if (sameFullName && (sameAddress || samePlzOrt || sameStreet)) return true;
             if (sameAddress && sameLastName && (sameFirstName || !aParts.vorname || !bParts.vorname)) return true;
             if (sameLastName && sameStreet && samePlzOrt) return true;
-            if (similarFullName && (sameAddress || samePlzOrt)) return true;
+            // Die teure Aehnlichkeitsberechnung nur, wenn sie das Ergebnis noch aendern kann.
+            if ((sameAddress || samePlzOrt) && aParts.fullName.length >= 6 && bParts.fullName.length >= 6
+                && duplicateSimilarity(aParts.fullName, bParts.fullName) >= 0.88) return true;
 
             return false;
         }
@@ -2350,11 +2487,33 @@
                 if (rootA !== rootB) parent.set(rootB, rootA);
             };
 
-            for (let i = 0; i < records.length; i += 1) {
-                for (let j = i + 1; j < records.length; j += 1) {
-                    if (arePotentialDuplicates(records[i], records[j])) union(records[i].id, records[j].id);
+            // Jede Duplikat-Regel verlangt eine gleiche Strasse, gleiche PLZ/Ort oder gleiche
+            // Adresse. Deshalb genuegt es, Adressen innerhalb dieser Gruppen zu vergleichen,
+            // statt jede mit jeder (bei 2'000 Adressen ~2 Mio. Paare).
+            const parts = new Map(records.map(adresse => [adresse.id, getDuplicateParts(adresse)]));
+            const gruppen = new Map();
+            const zuGruppe = (key, adresse) => {
+                if (!gruppen.has(key)) gruppen.set(key, []);
+                gruppen.get(key).push(adresse);
+            };
+            records.forEach(adresse => {
+                const p = parts.get(adresse.id);
+                if (p.strasse) zuGruppe(`s:${p.strasse}`, adresse);
+                if (p.plzOrtKey) zuGruppe(`p:${p.plzOrtKey}`, adresse);
+                if (p.addressKey) zuGruppe(`a:${p.addressKey}`, adresse);
+            });
+            const geprueft = new Set();
+            gruppen.forEach(gruppe => {
+                for (let i = 0; i < gruppe.length; i += 1) {
+                    for (let j = i + 1; j < gruppe.length; j += 1) {
+                        const a = gruppe[i], b = gruppe[j];
+                        const paar = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
+                        if (geprueft.has(paar)) continue;
+                        geprueft.add(paar);
+                        if (arePotentialDuplicates(parts.get(a.id), parts.get(b.id))) union(a.id, b.id);
+                    }
                 }
-            }
+            });
 
             const groupsByRoot = new Map();
             records.forEach(adresse => {
@@ -2365,8 +2524,8 @@
 
             return Array.from(groupsByRoot.values())
                 .filter(group => group.length > 1)
-                .map(group => group.sort((a, b) => normText(a.nachname).localeCompare(normText(b.nachname), 'de-CH') || normText(a.vorname).localeCompare(normText(b.vorname), 'de-CH')))
-                .sort((a, b) => normText(a[0]?.nachname).localeCompare(normText(b[0]?.nachname), 'de-CH'));
+                .map(group => group.sort((a, b) => textVergleich(a.nachname || '', b.nachname || '') || textVergleich(a.vorname || '', b.vorname || '')))
+                .sort((a, b) => textVergleich(a[0]?.nachname || '', b[0]?.nachname || ''));
         }
 
         function setDuplicateButtonsDisabled(disabled) {
@@ -2558,6 +2717,7 @@
                     .filter(adresse => !removeIds.includes(adresse.id))
                     .map(adresse => adresse.id === keeper.id ? { ...adresse, ...payload } : adresse);
                 debitorenDaten = debitorenDaten.map(debitor => removeIds.includes(debitor.kunde_id) ? { ...debitor, kunde_id: keeper.id, kunde_nummer: keeper.kundennummer || '' } : debitor);
+                baueHistoryIndex();
                 renderAdressListe();
                 renderDebitorListe();
                 renderDebitorKundenTreffer();
@@ -2646,7 +2806,8 @@
 
         window.abbrechenFwBearbeitung = () => resetFwForm({ collapse: true });
 
-        window.speichereFwBuchung = async () => {
+        window.speichereFwBuchung = () => mitGesperrtemKnopf('saveFwBtn', speichereFwBuchungIntern);
+        async function speichereFwBuchungIntern() {
             const datum_von = document.getElementById('fwDatumVon').value;
             const datum_bis = document.getElementById('fwDatumBis').value;
             const name = document.getElementById('fwName').value.trim();
@@ -2660,6 +2821,10 @@
 
             if (email && !emailInput.checkValidity()) {
                 return showToast('Bitte gib eine gültige E-Mail Adresse ein.', 'warning');
+            }
+
+            if (datum_bis < datum_von) {
+                return showToast('"Datum bis" darf nicht vor "Datum von" liegen.', 'warning');
             }
 
             const payload = {
@@ -2692,7 +2857,7 @@
                 }
                 resetFwForm({ collapse: true });
             } catch (error) { console.error(error); showToast('Fehler beim Speichern der Buchung.', 'error'); }
-        };
+        }
 
         window.bearbeiteFwBuchung = (id) => {
             const buchung = ferienwohnungDaten.find(b => b.id === id);
@@ -2701,7 +2866,7 @@
             fuelleFwForm(buchung);
             document.getElementById('fwFormTitle').innerText = 'Buchung bearbeiten';
             document.getElementById('saveFwBtn').innerText = 'Änderungen speichern';
-            document.getElementById('cancelFwBtn').style.display = 'inline-block';
+            document.getElementById('cancelFwBtn').style.display = 'inline-flex';
             toggleFwForm(true);
             document.getElementById('fwFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
@@ -2740,10 +2905,13 @@
 
             const { objekt, von, bis } = getFwExportFilters();
             return ferienwohnungDaten
+                // Mindestens eine Uebernachtung im Zeitraum: Anreise spaetestens am letzten Tag,
+                // Abreise nach dem ersten Tag. Aufenthalte ueber den Monatswechsel erscheinen
+                // so in beiden Monaten, reine Abreisetage zaehlen nicht.
                 .filter(b => {
                     if (objekt !== 'alle' && b.objekt !== objekt) return false;
-                    if (von && (!b.datum_von || b.datum_von < von)) return false;
-                    if (bis && (!b.datum_bis || b.datum_bis > bis)) return false;
+                    if (von && (!b.datum_bis || b.datum_bis <= von)) return false;
+                    if (bis && (!b.datum_von || b.datum_von > bis)) return false;
                     return true;
                 })
                 .sort((a, b) => {
@@ -2816,7 +2984,7 @@
             }).join('');
         };
 
-        window.executeFwExport = () => {
+        window.executeFwExport = async () => {
             if (hasInvalidFwExportDateRange()) {
                 showToast('Bitte wähle einen gültigen Datumsbereich für den Export.', 'warning');
                 return;
@@ -2863,6 +3031,7 @@
             });
 
             try {
+                const XLSX = await ladeXlsx();
                 const worksheet = XLSX.utils.json_to_sheet(exportData, { header: fwExportHeaders });
                 worksheet['!cols'] = [
                     { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 26 },
@@ -2873,7 +3042,7 @@
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Ferienwohnung");
 
                 const { von, bis } = getFwExportFilters();
-                const today = new Date().toISOString().split('T')[0];
+                const today = todayLocal();
                 const zeitraum = von || bis ? `${von || 'Start'}_bis_${bis || 'Ende'}` : today;
                 XLSX.writeFile(workbook, `Ferienwohnung_Export_${zeitraum}.xlsx`);
 
@@ -2900,11 +3069,12 @@
             const vonFilter = document.getElementById('fwFilterVon').value;
             const bisFilter = document.getElementById('fwFilterBis').value;
 
-            // Filtern
+            // Filtern: angezeigt wird jede Buchung, deren Aufenthalt den Zeitraum beruehrt –
+            // inkl. Gaeste, die schon angereist sind, und Abreisetag.
             let daten = ferienwohnungDaten.filter(b => {
                 if (objFilter !== 'alle' && b.objekt !== objFilter) return false;
-                if (vonFilter && b.datum_von < vonFilter) return false;
-                if (bisFilter && b.datum_bis > bisFilter) return false;
+                if (vonFilter && (b.datum_bis || b.datum_von || '') < vonFilter) return false;
+                if (bisFilter && (b.datum_von || '') > bisFilter) return false;
                 return true;
             });
 
@@ -2949,9 +3119,14 @@
             document.getElementById('fwSumPreis').innerText = `CHF ${formatCHF(sumPreis)}`;
             document.getElementById('fwSumNetto').innerText = `CHF ${formatCHF(sumNetto)}`;
             document.getElementById('fwSumKurtaxe').innerText = `CHF ${formatCHF(sumKurtaxe)}`;
+            const objektText = objFilter === 'alle' ? 'alle Objekte' : objFilter;
+            const zeitraumText = vonFilter || bisFilter
+                ? `${vonFilter ? formatDatumCH(vonFilter) : 'Anfang'} – ${bisFilter ? formatDatumCH(bisFilter) : 'offen'}`
+                : 'alle Jahre';
+            document.getElementById('fwSummaryHint').innerText = `Summen der ${daten.length} angezeigten Buchungen · Zeitraum: ${zeitraumText} · ${objektText}`;
 
             if (daten.length === 0) {
-                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #667085;">Für diesen Zeitraum / Filter gibt es keine Buchungen.</div>';
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #667085;">Für diesen Zeitraum / Filter gibt es keine Buchungen.</div>';
                 return;
             }
 
@@ -2989,7 +3164,7 @@
                         <div class="booking-details">
                             <div class="booking-body">
                             <div class="muted" style="margin-bottom: 10px; font-size: 0.9em;">${adresseDetailsHtml}${kontaktDetailsHtml ? `<br>${kontaktDetailsHtml}` : ''}</div>
-                            <div class="booking-row"><span class="label">Personen:</span> <span>${buchung.erwachsene} Erw. / ${buchung.kinder} Kind(er)</span></div>
+                            <div class="booking-row"><span class="label">Personen:</span> <span>${Number(buchung.erwachsene || 0)} Erw. / ${Number(buchung.kinder || 0)} Kind(er)</span></div>
                             <div class="booking-row"><span class="label">Anbieter:</span> <span>${escapeHtml(buchung.anbieter || '—')}</span></div>
                             <div class="booking-row"><span class="label">Gebucht am:</span> <span>${formatDatumCH(buchung.buchungsdatum)}</span></div>
                             <div class="booking-row"><span class="label">Erfasst am:</span> <span>${formatErfassung(buchung.erstellt_am)}</span></div>
@@ -3026,10 +3201,14 @@
 
             unsubscribeFerienwohnung = onSnapshot(q, (snap) => {
                 ferienwohnungDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                window.renderFwListe();
+                renderOderVormerken('ferienwohnung');
                 if (document.getElementById('fwExportModal').style.display === 'flex') {
                     window.renderFwExportPreview();
                 }
+            }, (error) => {
+                console.error(error);
+                document.getElementById('fwListeContainer').innerHTML = '<div style="text-align: center; padding: 40px; color: #667085;">Buchungen konnten nicht geladen werden. Bitte Seite neu laden.</div>';
+                showToast('Ferienwohnungs-Buchungen konnten nicht geladen werden.', 'error');
             });
         }
 
