@@ -39,3 +39,16 @@ export function verzoegert(fn, ms = 150) {
         timer = setTimeout(() => fn(...args), ms);
     };
 }
+
+// Liest einen Betrag in CHF und gibt Rappen (Ganzzahl) zurück, z.B. "12.50", "12,50",
+// "1'234.5" oder "-5". Kaufmännisch auf Rappen gerundet, ohne Rundungsfehler von
+// Kommazahlen. Leere oder ungültige Eingaben ergeben NaN.
+export function parseRappen(text) {
+    const s = String(text ?? '').trim().replace(/[\s'’]/g, '').replace(',', '.');
+    const m = s.match(/^(-?)(\d*)(?:\.(\d*))?$/);
+    if (!m || (m[2] === '' && !m[3])) return NaN;
+    const nachkomma = m[3] || '';
+    let rappen = parseInt(m[2] || '0', 10) * 100 + parseInt((nachkomma + '00').slice(0, 2), 10);
+    if (nachkomma.length > 2 && Number(nachkomma[2]) >= 5) rappen += 1;
+    return m[1] === '-' ? -rappen : rappen;
+}

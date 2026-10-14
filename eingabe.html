@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CreArt & Ferienwohnung Buchhaltung</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
@@ -68,6 +68,8 @@
         th.sortable:hover { background: #e9eef3; }
         .sort-icon { font-size: 0.8em; color: var(--text-muted); margin-left: 5px; }
         .aktionen { display: inline-flex; gap: 6px; }
+        /* Lange Spalten dürfen umbrechen, damit das Journal ohne Querscrollen passt */
+        .journal-tabelle td.j-text, .journal-tabelle td.j-soll, .journal-tabelle td.j-haben { white-space: normal; min-width: 130px; }
         tr.intern-row td { background-color: var(--intern-bg); color: var(--intern-text); }
         tr.privat-row td { background-color: var(--privat-bg); color: var(--privat-text); }
         tr.nachverfolgung-row td { background-color: var(--nach-bg); color: var(--nach-text); }
@@ -93,13 +95,34 @@
         .eb-input { width: 110px; text-align: right; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; min-height: 0; }
         .eb-input.fehler { border-color: var(--danger); background: var(--danger-bg); }
 
+        @media (max-width: 1100px) and (min-width: 769px) {
+            .flag-options { margin-left: 0; width: 100%; }
+        }
+
         /* Kontenplan */
         .kontenplan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
         .konten-kategorie { margin-bottom: 25px; }
         .konten-kategorie h3 { border-bottom: 2px solid var(--primary); padding-bottom: 5px; color: var(--primary); }
 
+        /* Filterleiste: auf dem Desktop sind die Gruppen direkt Teil der Leiste */
+        .filter-inhalt { display: contents; }
+
         @media (max-width: 768px) {
-            .global-filter-bar { flex-direction: column; align-items: stretch; gap: 15px; padding: 15px; }
+            .global-filter-bar { flex-direction: column; align-items: stretch; gap: 15px; padding: 12px; }
+            .global-filter-bar.offen .filter-inhalt { display: flex; flex-direction: column; gap: 18px; }
+            /* Journal-Karte: Datum + Betrag, Text, Objekt, Konten, Erfasst + Aktionen */
+            .journal-tabelle tr { grid-template-columns: 1fr auto; grid-template-areas: "datum betrag" "text text" "objekt objekt" "soll soll" "haben haben" "erfasst aktion"; }
+            .journal-tabelle .j-datum { grid-area: datum; font-weight: 600; color: var(--secondary); }
+            .journal-tabelle .j-betrag { grid-area: betrag; font-weight: 700; font-size: 1.05rem; }
+            .journal-tabelle .j-text { grid-area: text; font-weight: 600; }
+            .journal-tabelle .j-objekt { grid-area: objekt; font-size: var(--fs-sm); }
+            .journal-tabelle .j-soll { grid-area: soll; font-size: var(--fs-sm); }
+            .journal-tabelle .j-haben { grid-area: haben; font-size: var(--fs-sm); }
+            .journal-tabelle .j-erfasst { grid-area: erfasst; font-size: var(--fs-xs); color: var(--text-muted); }
+            .journal-tabelle .j-aktion { grid-area: aktion; }
+            .journal-tabelle tr.intern-row { background: var(--intern-bg); border-color: var(--intern-border); color: var(--intern-text); }
+            .journal-tabelle tr.privat-row { background: var(--privat-bg); border-color: var(--privat-border); color: var(--privat-text); }
+            .journal-tabelle tr.nachverfolgung-row { background: var(--nach-bg); border-color: var(--nach-border); color: var(--nach-text); }
             .filter-group-rechts { margin-left: 0; }
             .date-range-container { flex-direction: column; align-items: stretch; gap: 10px; }
             .checkbox-container, .filter-optionen { border-left: none; padding-left: 0; margin-left: 0; flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -132,10 +155,10 @@
     </header>
 
     <nav class="nav-tabs">
-        <button class="tab-btn active" onclick="openTab('journal', event)">Erfassen & Journal</button>
-        <button class="tab-btn" onclick="openTab('er', event)">Erfolgsrechnung</button>
-        <button class="tab-btn" onclick="openTab('bilanz', event)">Bilanz</button>
-        <button class="tab-btn" onclick="openTab('kp', event)">Kontenplan</button>
+        <button class="tab-btn active" onclick="openTab('journal', event)"><span class="tab-icon" aria-hidden="true">📒</span><span class="tab-lang">Erfassen & Journal</span><span class="tab-kurz">Journal</span></button>
+        <button class="tab-btn" onclick="openTab('er', event)"><span class="tab-icon" aria-hidden="true">📈</span><span class="tab-lang">Erfolgsrechnung</span><span class="tab-kurz">ER</span></button>
+        <button class="tab-btn" onclick="openTab('bilanz', event)"><span class="tab-icon" aria-hidden="true">⚖️</span><span class="tab-lang">Bilanz</span><span class="tab-kurz">Bilanz</span></button>
+        <button class="tab-btn" onclick="openTab('kp', event)"><span class="tab-icon" aria-hidden="true">📋</span><span class="tab-lang">Kontenplan</span><span class="tab-kurz">Konten</span></button>
     </nav>
 
     <div id="journal" class="tab-content active">
@@ -147,7 +170,7 @@
                 <div class="form-group col-7"><label>Text</label><input type="text" id="text" placeholder="z.B. Honorar Projekt X"></div>
                 <div class="form-group col-5"><label>Soll-Konto</label><select id="sollKonto"></select></div>
                 <div class="form-group col-5"><label>Haben-Konto</label><select id="habenKonto"></select></div>
-                <div class="form-group col-2"><label>Betrag (CHF)</label><input type="number" id="betrag" step="0.01" placeholder="0.00"></div>
+                <div class="form-group col-2"><label>Betrag (CHF)</label><input type="text" inputmode="decimal" autocomplete="off" id="betrag" placeholder="0.00"></div>
             </div>
 
             <div class="subobjekt-bar" id="unterobjektBar">
@@ -177,11 +200,11 @@
             <div id="anteilContainer" class="anteil-container">
                 <div class="form-group" id="groupAnteilIntern" style="display: none;">
                     <label>Anteil Intern (CHF)</label>
-                    <input type="number" id="anteilIntern" step="0.01" placeholder="Gesamtbetrag">
+                    <input type="text" inputmode="decimal" autocomplete="off" id="anteilIntern" placeholder="Gesamtbetrag">
                 </div>
                 <div class="form-group" id="groupAnteilPrivat" style="display: none;">
                     <label>Anteil Privat (CHF)</label>
-                    <input type="number" id="anteilPrivat" step="0.01" placeholder="Gesamtbetrag">
+                    <input type="text" inputmode="decimal" autocomplete="off" id="anteilPrivat" placeholder="Gesamtbetrag">
                 </div>
                 <div class="anteil-info">
                     <b>Info:</b> Trägst du hier einen Teilbetrag ein, wird die Buchung im Journal optisch in zwei Zeilen aufgeteilt. Bleibt das Feld leer, gilt die gesamte Buchung als Intern bzw. Privat.
@@ -191,7 +214,11 @@
         </div>
 
         <div id="filterPlaceholderJournal">
-            <div class="global-filter-bar" id="globalFilterBar" style="display: none;">
+            <div class="global-filter-bar mobil-klappbar" id="globalFilterBar" style="display: none;">
+                <button type="button" class="btn btn-outline filter-toggle" onclick="this.parentElement.classList.toggle('offen')" aria-controls="filterInhalt">
+                    <span>Filter <span id="filterZaehler" class="muted"></span></span><span class="pfeil" aria-hidden="true">▾</span>
+                </button>
+                <div class="klapp-inhalt filter-inhalt" id="filterInhalt">
                 <div class="filter-group">
                     <label>Zeige Objekte:</label>
                     <div class="checkbox-container">
@@ -265,13 +292,14 @@
                 <div class="filter-group filter-group-rechts">
                     <button onclick="filterLoeschen()" class="btn-reset">✕ Filter löschen</button>
                 </div>
+                </div>
             </div>
         </div>
 
         <div class="card">
             <h2 class="card-title">Journal <span id="loadingJournal" class="small-note">Lade Daten…</span></h2>
             <div class="table-container">
-                <table>
+                <table class="karten-tabelle journal-tabelle">
                     <thead>
                         <tr>
                             <th class="sortable" onclick="sortiere('erstellt_am')">Erfasst am <span id="sort_erstellt_am" class="sort-icon"></span></th>
@@ -377,7 +405,7 @@
     <script type="module">
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
         import { db, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where } from "./js/firestore.js";
-        import { escapeHtml, formatCHF, formatDatumCH, todayLocal } from "./js/utils.js";
+        import { escapeHtml, formatCHF, formatDatumCH, todayLocal, parseRappen } from "./js/utils.js";
         import { objekte, unterobjekte, kontenplan, ERSTES_JAHR, initJahresAuswahl } from "./js/config.js";
         import { toast, bestaetigen } from "./js/ui.js";
         
@@ -671,7 +699,7 @@
                 const zellen = objekte.map(objekt => {
                     const key = `${year}_${konto.id}_${objekt}`;
                     const startWert = (getEBBetrag(key) / 100).toFixed(2);
-                    return `<td class="right"><input type="number" step="0.01" class="eb-input" data-eb-key="${key}" value="${startWert}" onblur="saveEB('${konto.id}', '${objekt}', this)"></td>`;
+                    return `<td class="right"><input type="text" inputmode="decimal" autocomplete="off" class="eb-input" data-eb-key="${key}" value="${startWert}" onblur="saveEB('${konto.id}', '${objekt}', this)"></td>`;
                 }).join('');
                 return `<tr><td>${konto.id} - ${konto.name}</td>${zellen}</tr>`;
             }).join('');
@@ -689,7 +717,7 @@
             const year = document.getElementById('selectedYear').value;
             const key = `${year}_${accountId}_${objekt}`;
             const roh = String(input.value).trim();
-            const rappen = roh === '' ? 0 : Math.round(parseFloat(roh) * 100);
+            const rappen = roh === '' ? 0 : parseRappen(roh);
             const bisher = lokaleEB.find(e => e.id === key);
 
             input.classList.remove('fehler');
@@ -767,7 +795,7 @@
                 return;
             }
 
-            const betragRappen = Math.round(parseFloat(b) * 100);
+            const betragRappen = parseRappen(b);
             if(!Number.isFinite(betragRappen) || betragRappen === 0) {
                 zeigeSaveFeedback("❌ Der Betrag muss eine Zahl ungleich 0 sein.", "error");
                 return;
@@ -775,8 +803,8 @@
 
             const anteilInternVal = document.getElementById('anteilIntern').value;
             const anteilPrivatVal = document.getElementById('anteilPrivat').value;
-            const anteilIntern = anteilInternVal ? Math.round(parseFloat(anteilInternVal) * 100) : 0;
-            const anteilPrivat = anteilPrivatVal ? Math.round(parseFloat(anteilPrivatVal) * 100) : 0;
+            const anteilIntern = anteilInternVal.trim() ? parseRappen(anteilInternVal) : 0;
+            const anteilPrivat = anteilPrivatVal.trim() ? parseRappen(anteilPrivatVal) : 0;
             if(!Number.isFinite(anteilIntern) || !Number.isFinite(anteilPrivat) || anteilIntern < 0 || anteilPrivat < 0) {
                 zeigeSaveFeedback("❌ Die Anteile Intern/Privat müssen positive Beträge sein.", "error");
                 return;
@@ -892,6 +920,22 @@
         };
 
         window.wendeFilterAn = () => { journalLimit = JOURNAL_SEITE; updateView(); };
+
+        // Zeigt auf dem Handy, wie viele Filter vom Standard abweichen ("Filter (2 aktiv)").
+        function aktualisiereFilterZaehler() {
+            const year = document.getElementById('selectedYear').value;
+            const imJournal = aktiverTab === 'journal';
+            const abweichungen = [
+                document.querySelectorAll('.filter-cb:not(:checked)').length > 0,
+                document.querySelectorAll('.filter-subobj-cb:checked').length > 0,
+                document.getElementById('filterDatumVon').value !== `${year}-01-01` || document.getElementById('filterDatumBis').value !== `${year}-12-31`,
+                istAbschlussAnsicht,
+                imJournal && document.getElementById('filterKonto').value !== 'Alle',
+                imJournal && ['jFiltIntern', 'jFiltPrivat', 'jFiltNach'].some(id => document.getElementById(id).checked),
+                !imJournal && ['rFiltIntern', 'rFiltPrivat', 'rFiltNach', 'rFiltErtrag', 'rFiltAufwand'].some(id => !document.getElementById(id).checked)
+            ].filter(Boolean).length;
+            document.getElementById('filterZaehler').textContent = abweichungen ? `(${abweichungen} aktiv)` : '';
+        }
         window.sortiere = (s) => {
             if(aktuelleSortierung.spalte === s) aktuelleSortierung.richtung = aktuelleSortierung.richtung === 'asc' ? 'desc' : 'asc';
             else { aktuelleSortierung.spalte = s; aktuelleSortierung.richtung = 'asc'; }
@@ -944,6 +988,7 @@
 
         function updateView() {
             const year = document.getElementById('selectedYear').value;
+            aktualisiereFilterZaehler();
             let datenBasis = getJahresBasis(year);
 
             // 2. GLOBALE FILTER (Objekt & Datum)
@@ -1088,14 +1133,14 @@
                 }
 
                 return `<tr ${trClass}>
-                    <td>${formatDateTimeCH(b.erstellt_am)}</td>
-                    <td>${formatDatumCH(b.datum_eingabe)}</td>
-                    <td>${objektAnzeige}</td>
-                    <td>${displayTxt}${iconStr}</td>
-                    <td>${escapeHtml(b.soll)} (${escapeHtml(getKName(b.soll))})</td>
-                    <td>${escapeHtml(b.haben)} (${escapeHtml(getKName(b.haben))})</td>
-                    <td class="right chf">${formatCHF(b.betrag)}</td>
-                    <td class="center"><span class="aktionen">
+                    <td class="j-erfasst" data-label="Erfasst">${formatDateTimeCH(b.erstellt_am)}</td>
+                    <td class="j-datum">${formatDatumCH(b.datum_eingabe)}</td>
+                    <td class="j-objekt">${objektAnzeige}</td>
+                    <td class="j-text">${displayTxt}${iconStr}</td>
+                    <td class="j-soll" data-label="Soll">${escapeHtml(b.soll)} (${escapeHtml(getKName(b.soll))})</td>
+                    <td class="j-haben" data-label="Haben">${escapeHtml(b.haben)} (${escapeHtml(getKName(b.haben))})</td>
+                    <td class="right chf j-betrag">${formatCHF(b.betrag)}</td>
+                    <td class="center j-aktion"><span class="aktionen">
                         <button class="action-btn" title="Bearbeiten" aria-label="Bearbeiten" onclick="bearbeiteBuchung('${b.id}')">✏️</button>
                         <button class="action-btn danger" title="Löschen" aria-label="Löschen" onclick="loescheBuchung('${b.id}')">🗑️</button>
                     </span></td>
