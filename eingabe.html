@@ -4,204 +4,132 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CreArt & Ferienwohnung Buchhaltung</title>
+    <link rel="stylesheet" href="css/styles.css">
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #34495e;
-            --accent: #27ae60;
-            --danger: #e74c3c;
-            --warning: #f39c12; 
-            --bg: #f4f7f6;
-            --card-bg: #ffffff;
-        }
+        /* Nur Regeln für die Buchhaltung; Grundlagen in css/styles.css */
 
-        body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 1500px; margin: 0 auto; padding: 20px; background: var(--bg); color: #333; }
-        
-        .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .app-title { font-size: 1.8em; font-weight: bold; color: var(--primary); margin: 0; display: flex; align-items: center; }
-        .year-select-title { font-size: inherit; font-family: inherit; font-weight: inherit; color: inherit; border: none; background: transparent; cursor: pointer; padding: 0 5px; outline: none; margin-left: 5px; }
-
-        .header-controls { display: flex; gap: 15px; align-items: center; }
-
-        .btn-switch { background: #fff; color: var(--primary); border: 2px solid var(--primary); padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; text-decoration: none; transition: 0.3s; }
-        .btn-switch:hover { background: var(--primary); color: #fff; }
-
-        .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 0; }
-        .tab-btn { padding: 12px 25px; border: none; background: #e0e0e0; cursor: pointer; font-weight: bold; border-radius: 8px 8px 0 0; transition: 0.3s; color: #666; }
-        .tab-btn.active { background: var(--card-bg); color: var(--primary); border: 2px solid #ddd; border-bottom: 2px solid var(--card-bg); margin-bottom: -2px; }
-        .tab-btn:hover:not(.active) { background: #d0d0d0; }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #eee; }
-        h2 { margin-top: 0; color: var(--primary); font-size: 1.4em; display: flex; justify-content: space-between; align-items: center; }
-
-        .form-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 15px; margin-bottom: 20px; }
-        .col-2 { grid-column: span 2; }
-        .col-3 { grid-column: span 3; }
-        .col-5 { grid-column: span 5; }
-        .col-7 { grid-column: span 7; }
-
-        .form-group { display: flex; flex-direction: column; }
-        label { font-weight: 600; font-size: 0.85em; margin-bottom: 6px; color: var(--secondary); }
-        input[type="text"], input[type="number"], input[type="date"], select { padding: 12px; border: 1px solid #ccd1d9; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
-        
-        .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; padding: 10px 15px; border-radius: 6px; border: 1px solid #ddd; transition: 0.2s;}
-        .checkbox-label input { transform: scale(1.3); cursor: pointer; margin: 0;}
-
-        /* Farb-Tags für die Checkboxen */
-        .cb-intern { background: #fff4e6; color: #b95d00; border-color: #ffd8a8; }
-        .cb-privat { background: #edf7ed; color: #1f7a3f; border-color: #c8e6c9; }
-        .cb-nachverfolgung { background: #fdecec; color: #b42318; border-color: #f3c7c3; }
+        /* Markierungen Intern / Privat / Nachverfolgung im Erfassungsformular */
+        .flag-options { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; font-size: var(--fs-sm); padding: 0 14px; min-height: var(--control-h); border-radius: var(--radius); border: 1px solid var(--border); margin: 0; }
+        .checkbox-label input { width: 17px; height: 17px; cursor: pointer; margin: 0; }
+        .cb-intern { background: var(--intern-bg); color: var(--intern-text); border-color: var(--intern-border); }
+        .cb-privat { background: var(--privat-bg); color: var(--privat-text); border-color: var(--privat-border); }
+        .cb-nachverfolgung { background: var(--nach-bg); color: var(--nach-text); border-color: var(--nach-border); }
+        .form-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+        .anteil-container { display: none; gap: 30px; margin-top: 15px; padding: 15px; background: var(--surface-muted); border-radius: var(--radius); border: 1px dashed #cbd5e1; align-items: center; flex-wrap: wrap; }
+        .anteil-container .form-group { min-width: 180px; }
+        .anteil-info { font-size: var(--fs-sm); color: var(--text-muted); flex: 1; min-width: 220px; }
 
         /* Unterobjekt-Auswahl im Erfassungsformular (z.B. Ferienwohnung: 2-Zimmer / Studio) */
-        .subobjekt-bar { display: none; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 12px 15px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; }
+        .subobjekt-bar { display: none; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 12px 15px; background: var(--surface-muted); border: 1px dashed #cbd5e1; border-radius: var(--radius); }
         .subobjekt-bar label { margin-bottom: 0; white-space: nowrap; }
         .subobjekt-options { display: flex; flex-wrap: wrap; gap: 10px; }
-        .subobjekt-btn { background: #ffffff; color: var(--secondary); border: 1px solid #ccd1d9; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 0.95em; transition: 0.2s; }
+        .subobjekt-btn { background: #fff; color: var(--secondary); border: 1px solid var(--border); min-height: 38px; padding: 0 20px; border-radius: var(--radius-pill); cursor: pointer; font-weight: 600; font-size: var(--fs-sm); }
         .subobjekt-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .subobjekt-btn.active { background: var(--primary); border-color: var(--primary); color: #ffffff; }
-        .subobjekt-hint { font-size: 0.85em; color: #666; flex: 1; min-width: 220px; }
+        .subobjekt-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .subobjekt-hint { font-size: var(--fs-sm); color: var(--text-muted); flex: 1; min-width: 220px; }
         #unterobjektCheckboxes .filter-cb-label { white-space: nowrap; }
-        .subobjekt-tag { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 10px; background: #e8f0fe; color: var(--primary); font-size: 0.8em; font-weight: bold; }
-        .report-warnung { display: none; margin-bottom: 20px; padding: 12px 15px; background: #fdecec; border: 1px solid #f3c7c3; border-radius: 8px; color: #b42318; font-size: 0.9em; line-height: 1.5; }
-        .bilanz-kontrolle { margin-top: 15px; padding: 10px 12px; border-radius: 8px; font-size: 0.9em; display: flex; justify-content: space-between; gap: 10px; }
-        .bilanz-kontrolle.ok { background: #edf7ed; color: #1f7a3f; border: 1px solid #c8e6c9; }
-        .bilanz-kontrolle.fehler { background: #fdecec; color: #b42318; border: 1px solid #f3c7c3; font-weight: bold; }
-        .journal-mehr { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin-top: 15px; color: #666; font-size: 0.9em; }
-        .journal-mehr:empty { display: none; }
-        .journal-mehr button { background: #fff; color: var(--primary); border: 1px solid #ccd1d9; padding: 8px 16px; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; }
-        .journal-mehr button:hover { border-color: var(--primary); }
-        .report-filter-hinweis { display: none; margin-bottom: 20px; padding: 12px 15px; background: #e8f0fe; border: 1px solid #d2e3fc; border-radius: 8px; color: var(--secondary); font-size: 0.9em; line-height: 1.5; }
+        .subobjekt-tag { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--surface-info); color: var(--primary); font-size: var(--fs-xs); font-weight: 600; }
 
-        .global-filter-bar { display: flex; flex-wrap: wrap; gap: 20px; background: #e8f0fe; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d2e3fc; align-items: flex-end;}
+        /* Hinweise und Kontrollen in ER / Bilanz */
+        .report-filter-hinweis { display: none; margin-bottom: 20px; padding: 12px 15px; background: var(--surface-info); border: 1px solid #d2e3fc; border-radius: var(--radius); color: var(--secondary); font-size: var(--fs-sm); line-height: 1.5; }
+        .report-warnung { display: none; margin-bottom: 20px; padding: 12px 15px; background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius); color: #b42318; font-size: var(--fs-sm); line-height: 1.5; }
+        .bilanz-kontrolle { margin-top: 15px; padding: 10px 12px; border-radius: var(--radius); font-size: var(--fs-sm); display: flex; justify-content: space-between; gap: 10px; }
+        .bilanz-kontrolle.ok { background: var(--success-bg); color: var(--success); border: 1px solid var(--privat-border); }
+        .bilanz-kontrolle.fehler { background: var(--danger-bg); color: #b42318; border: 1px solid var(--danger-border); font-weight: 600; }
+        .journal-mehr { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin-top: 15px; color: var(--text-muted); font-size: var(--fs-sm); }
+        .journal-mehr:empty { display: none; }
+
+        /* Filterleiste */
+        .global-filter-bar { display: flex; flex-wrap: wrap; gap: 20px; background: var(--surface-info); padding: 20px; border-radius: var(--radius-lg); margin-bottom: 20px; border: 1px solid #d2e3fc; align-items: flex-end; }
         .filter-group { display: flex; flex-direction: column; gap: 8px; }
-        .checkbox-container { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; height: 100%; }
-        .filter-cb-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.95em; }
-        .filter-cb-label input { transform: scale(1.2); cursor: pointer; }
+        .filter-group > label { margin-bottom: 0; }
+        .filter-group-rechts { margin-left: auto; }
+        .checkbox-container { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .filter-cb-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.95rem; font-weight: 400; color: var(--text); margin: 0; }
+        .filter-cb-label input { width: 16px; height: 16px; cursor: pointer; margin: 0; }
+        .filter-optionen { display: flex; gap: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px; }
+        .filter-optionen .filter-cb-label { font-weight: 600; }
+        .lbl-intern { color: var(--intern-text) !important; }
+        .lbl-privat { color: var(--privat-text) !important; }
+        .lbl-nach { color: var(--nach-text) !important; }
         .date-range-container { display: flex; align-items: center; gap: 10px; }
         /* ER/Bilanz-Optionen: Zeile "Inkl. Ertrag / Inkl. Aufwand" über "Inkl. Intern / Privat / Nachverfolg." */
         .report-options-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
         .report-options-typ { color: var(--primary); padding-bottom: 6px; border-bottom: 1px dashed #cbd5e1; }
+        .ansicht-hinweis { font-size: var(--fs-xs); color: var(--text-muted); font-weight: 400; max-width: 220px; line-height: 1.35; }
 
-        .btn-main { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
-        .btn-main:disabled { opacity: 0.7; cursor: wait; }
-        .btn-cancel { background: var(--danger); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
-        .btn-reset { background: #ffffff; color: var(--danger); border: 1px solid #f5c6cb; padding: 12px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap; }
-        .btn-reset:hover { background: #f8d7da; }
-        
-        .btn-toggle-view { background: transparent; color: var(--accent); border: 2px solid var(--accent); padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .btn-toggle-view.active { background: #fff3cd; color: #856404; border-color: #ffeeba; }
+        .save-feedback { display: none; margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-sm); font-weight: 600; font-size: var(--fs-sm); }
+        .save-feedback.success { display: block; background: var(--success-bg); color: var(--success); border: 1px solid var(--privat-border); }
+        .save-feedback.error { display: block; background: var(--danger-bg); color: #b42318; border: 1px solid var(--danger-border); }
 
-        .table-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #edf2f7; white-space: nowrap; }
-        th.sortable { background: #f8fafc; font-weight: bold; color: var(--secondary); cursor: pointer; user-select: none; transition: background 0.2s; }
-        th.sortable:hover { background: #e2e6ea; }
-        .sort-icon { font-size: 0.8em; color: #7f8c8d; margin-left: 5px; }
-        .right { text-align: right; }
-        .chf { font-variant-numeric: tabular-nums; font-weight: 500; }
-        .negative { color: var(--danger); }
-        
-        /* Zeilen-Farben im Journal */
-        tr.intern-row td { background-color: #fff4e6; color: #b95d00; }
-        tr.privat-row td { background-color: #edf7ed; color: #1f7a3f; }
-        tr.nachverfolgung-row td { background-color: #fdecec; color: #b42318; }
-        
+        /* Journal */
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background: #e9eef3; }
+        .sort-icon { font-size: 0.8em; color: var(--text-muted); margin-left: 5px; }
+        .aktionen { display: inline-flex; gap: 6px; }
+        tr.intern-row td { background-color: var(--intern-bg); color: var(--intern-text); }
+        tr.privat-row td { background-color: var(--privat-bg); color: var(--privat-text); }
+        tr.nachverfolgung-row td { background-color: var(--nach-bg); color: var(--nach-text); }
+
+        /* Erfolgsrechnung / Bilanz */
         .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: stretch; }
         .report-column { display: flex; flex-direction: column; height: 100%; }
         .report-data-table { margin-bottom: auto; }
+        .report-data-table td, .report-total-table td { border-bottom: 1px solid var(--line); }
         .report-total-table { border-top: 2px solid var(--primary); margin-top: 15px; }
-        .total-row { background: #f1f5f9; font-weight: bold; }
+        .total-row { background: #f1f5f9; font-weight: 600; }
         .profit-row { color: var(--accent); font-style: italic; }
+        .ergebnis-box { margin-top: 30px; background: var(--surface-muted); }
+        .ergebnis-box h3 { margin-bottom: 6px; }
+        .ergebnis-wert { font-size: 1.5rem; font-weight: 700; }
 
-        .action-btn { background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px; transition: transform 0.1s;}
-        .action-btn:hover { transform: scale(1.2); }
-        .save-feedback { display: none; margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-weight: 600; font-size: 0.92em; }
-        .save-feedback.success { display: block; background: #edf7ed; color: #1f7a3f; border: 1px solid #c8e6c9; }
-        .save-feedback.error { display: block; background: #fdecec; color: #b42318; border: 1px solid #f3c7c3; }
-        
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); overflow-y: auto; }
-        .modal-content { background-color: white; margin: 5% auto; padding: 30px; border-radius: 12px; width: 80%; max-width: 1000px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
-        .close-modal { font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa; }
+        /* Eröffnungsbilanz-Dialog */
+        .modal { display: none; position: fixed; z-index: 1000; inset: 0; background-color: rgba(15, 23, 42, 0.45); overflow-y: auto; }
+        .modal-content { background-color: #fff; margin: 5% auto; padding: 28px; border-radius: var(--radius-lg); width: 80%; max-width: 1000px; box-shadow: var(--shadow-pop); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 15px; margin-bottom: 20px; }
+        .close-modal { font-size: 28px; line-height: 1; cursor: pointer; color: var(--text-muted); background: none; border: none; }
         .close-modal:hover { color: var(--danger); }
-        .eb-input { width: 100px; text-align: right; border: 1px solid #ddd; border-radius: 4px; padding: 5px; }
-        .eb-input.fehler { border-color: var(--danger); background: #fdecec; }
-        
+        .eb-input { width: 110px; text-align: right; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; min-height: 0; }
+        .eb-input.fehler { border-color: var(--danger); background: var(--danger-bg); }
+
+        /* Kontenplan */
         .kontenplan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
         .konten-kategorie { margin-bottom: 25px; }
         .konten-kategorie h3 { border-bottom: 2px solid var(--primary); padding-bottom: 5px; color: var(--primary); }
-        /* ==========================================================================
-           📱 MOBILE OPTIMIERUNG (Nur für Bildschirme < 768px)
-           ========================================================================== */
+
         @media (max-width: 768px) {
-            /* Globale Anpassungen (Abstände verringern um Platz zu sparen) */
-            body { padding: 10px; }
-            .card, .collapsible-body, .modal-content, .admin-controls, .login-card { padding: 15px; }
-            .modal-content { width: 92%; margin: 10% auto; padding: 20px; }
-            
-            /* Header & Navigation flexibel stapeln */
-            .app-header, header { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; }
-            .header-controls { flex-direction: column; width: 100%; gap: 10px; }
-            .btn-switch, .btn-toggle-view { width: 100%; text-align: center; box-sizing: border-box; }
-            
-            /* Tabs horizontal scrollbar machen anstatt sie unschön umzubrechen */
-            .nav-tabs { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: none; padding-bottom: 5px; gap: 8px;}
-            .tab-btn { white-space: nowrap; flex-shrink: 0; font-size: 0.95em; padding: 12px 18px; border-radius: 8px; margin: 0; border: 1px solid #ddd; }
-            .tab-btn.active { border: 2px solid var(--primary); }
-            
-            /* Formular-Grid auflösen -> Alles untereinander anordnen */
-            .form-grid { display: flex !important; flex-direction: column; gap: 15px; }
-            .form-group, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-12 { width: 100%; }
-            
-            /* Filter-Leisten & Suchfelder anpassen */
-            .global-filter-bar, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; gap: 15px; }
-            .filter-inline, .date-range-container { flex-direction: column; align-items: stretch; width: 100%; gap: 10px;}
-            .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
+            .global-filter-bar { flex-direction: column; align-items: stretch; gap: 15px; padding: 15px; }
+            .filter-group-rechts { margin-left: 0; }
+            .date-range-container { flex-direction: column; align-items: stretch; gap: 10px; }
+            .checkbox-container, .filter-optionen { border-left: none; padding-left: 0; margin-left: 0; flex-direction: column; align-items: flex-start; gap: 10px; }
             .report-options-row { flex-direction: column; align-items: flex-start; gap: 10px; }
-            .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
-            
-            /* Unterobjekt-Auswahl untereinander statt nebeneinander */
+            .filter-group select, .filter-group input:not([type="checkbox"]) { width: 100%; }
+            .flag-options { margin-left: 0; }
             .subobjekt-bar { flex-direction: column; align-items: stretch; gap: 10px; }
             .subobjekt-options { width: 100%; }
             .subobjekt-btn { flex: 1; }
-
-            /* Buttons auf volle Breite ziehen (Daumen-freundlich) */
-            .btn-main, .btn-cancel, .btn-reset, .btn-secondary, .event-form-actions button { width: 100% !important; margin-bottom: 5px; box-sizing: border-box; }
-            .event-form-actions { flex-direction: column; width: 100%; gap: 10px; }
-            
-            /* Report-Grids (ER / Bilanz) & Admin Diffs untereinander */
-            .report-grid, .diff-grid { grid-template-columns: 1fr; gap: 30px; }
-            .fw-summary-dashboard { grid-template-columns: 1fr; }
+            .report-grid { grid-template-columns: 1fr; gap: 30px; }
             .kontenplan-grid { grid-template-columns: 1fr; gap: 15px; }
-            
-            /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
-            .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
-            
-            /* Admin-Tool spezifisch */
-            .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
-            .filter-row .filter-btn { width: 100%; text-align: center; }
-            
-            /* Login spezifisch */
-            .checkbox-group { align-items: flex-start; }
-            .checkbox-group input { margin-top: 4px; }
+            .modal-content { width: 94%; margin: 8% auto; padding: 18px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="app-header">
-        <h1 class="app-title">Buchhaltung 
-            <select id="selectedYear" class="year-select-title" onchange="changeYear()"></select>
+    <header class="app-header">
+        <h1 class="app-title">Buchhaltung
+            <select id="selectedYear" class="year-select-title" onchange="changeYear()" aria-label="Jahr"></select>
         </h1>
-        <div class="header-controls">
-            <button id="btnAbschlussAnsicht" onclick="toggleAbschlussAnsicht()" class="btn-toggle-view">👁️ Alles anzeigen</button>
-            <a href="verwaltung.html" class="btn-switch">Verwaltung</a>
-            <button class="tab-btn" onclick="logout()" style="color: var(--danger); background: transparent; padding: 0;">Logout</button>
+        <div class="app-header-actions">
+            <nav class="app-nav" aria-label="Bereiche">
+                <a href="eingabe.html" class="app-nav-link active" aria-current="page">Buchhaltung</a>
+                <a href="verwaltung.html" class="app-nav-link">Verwaltung</a>
+                <a href="admin.html" class="app-nav-link">Log</a>
+            </nav>
+            <button type="button" class="btn btn-ghost danger" onclick="logout()">Abmelden</button>
         </div>
-    </div>
+    </header>
 
     <nav class="nav-tabs">
         <button class="tab-btn active" onclick="openTab('journal', event)">Erfassen & Journal</button>
@@ -228,11 +156,11 @@
                 <span class="subobjekt-hint">Optional &ndash; ohne Auswahl wird die Buchung wie gewohnt nur dem Objekt zugewiesen. Ein Klick auf das aktive Unterobjekt hebt die Auswahl wieder auf.</span>
             </div>
 
-            <div style="display:flex; gap:15px; align-items: center; flex-wrap: wrap; margin-top: 10px;">
-                <button id="btnBuchen" class="btn-main" style="width: auto; padding: 15px 30px;">Buchung speichern</button>
-                <button id="btnAbbrechen" class="btn-cancel" style="width: auto;">Abbrechen</button>
-                
-                <div style="margin-left: auto; display: flex; gap: 10px;">
+            <div class="form-actions">
+                <button id="btnBuchen" class="btn-main">Buchung speichern</button>
+                <button id="btnAbbrechen" class="btn btn-outline" style="display: none;">Abbrechen</button>
+
+                <div class="flag-options">
                     <label class="checkbox-label cb-intern">
                         <input type="checkbox" id="nurIntern" onchange="toggleAnteilFields()"> 🔸 Intern
                     </label>
@@ -246,16 +174,16 @@
             </div>
             <div id="saveFeedback" class="save-feedback"></div>
 
-            <div id="anteilContainer" style="display: none; gap: 30px; margin-top: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; align-items: center;">
-                <div class="form-group" id="groupAnteilIntern" style="display: none; min-width: 180px;">
+            <div id="anteilContainer" class="anteil-container">
+                <div class="form-group" id="groupAnteilIntern" style="display: none;">
                     <label>Anteil Intern (CHF)</label>
                     <input type="number" id="anteilIntern" step="0.01" placeholder="Gesamtbetrag">
                 </div>
-                <div class="form-group" id="groupAnteilPrivat" style="display: none; min-width: 180px;">
+                <div class="form-group" id="groupAnteilPrivat" style="display: none;">
                     <label>Anteil Privat (CHF)</label>
                     <input type="number" id="anteilPrivat" step="0.01" placeholder="Gesamtbetrag">
                 </div>
-                <div style="font-size: 0.85em; color: #666; flex: 1;">
+                <div class="anteil-info">
                     <b>Info:</b> Trägst du hier einen Teilbetrag ein, wird die Buchung im Journal optisch in zwei Zeilen aufgeteilt. Bleibt das Feld leer, gilt die gesamte Buchung als Intern bzw. Privat.
                 </div>
             </div>
@@ -265,40 +193,40 @@
         <div id="filterPlaceholderJournal">
             <div class="global-filter-bar" id="globalFilterBar" style="display: none;">
                 <div class="filter-group">
-                    <label><strong>Zeige Objekte:</strong></label>
+                    <label>Zeige Objekte:</label>
                     <div class="checkbox-container">
-                        <div id="objektCheckboxes" style="display: flex; gap: 15px; flex-wrap: wrap;"></div>
-                        
-                        <div id="filterJournalOptions" style="display: flex; gap: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px;">
-                            <label class="filter-cb-label" style="color: #b95d00; font-weight: bold;">
+                        <div id="objektCheckboxes" class="checkbox-container"></div>
+
+                        <div id="filterJournalOptions" class="filter-optionen">
+                            <label class="filter-cb-label lbl-intern">
                                 <input type="checkbox" id="jFiltIntern" onchange="wendeFilterAn()"> Intern
                             </label>
-                            <label class="filter-cb-label" style="color: #1f7a3f; font-weight: bold;">
+                            <label class="filter-cb-label lbl-privat">
                                 <input type="checkbox" id="jFiltPrivat" onchange="wendeFilterAn()"> Privat
                             </label>
-                            <label class="filter-cb-label" style="color: #b42318; font-weight: bold;">
+                            <label class="filter-cb-label lbl-nach">
                                 <input type="checkbox" id="jFiltNach" onchange="wendeFilterAn()"> Nachverfolg.
                             </label>
                         </div>
 
-                        <div id="filterReportOptions" style="display: none; flex-direction: column; gap: 8px; border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px;">
+                        <div id="filterReportOptions" class="filter-optionen" style="display: none; flex-direction: column; gap: 8px;">
                             <!-- Überkategorie: gilt nur für Buchungen, die als Intern, Privat oder Nachverfolgung markiert sind -->
                             <div class="report-options-row report-options-typ" title="Gilt nur für Buchungen, die als Intern, Privat oder Nachverfolgung markiert sind">
-                                <label class="filter-cb-label" style="font-weight: bold;">
+                                <label class="filter-cb-label">
                                     <input type="checkbox" id="rFiltErtrag" checked onchange="wendeFilterAn()"> Inkl. Ertrag
                                 </label>
-                                <label class="filter-cb-label" style="font-weight: bold;">
+                                <label class="filter-cb-label">
                                     <input type="checkbox" id="rFiltAufwand" checked onchange="wendeFilterAn()"> Inkl. Aufwand
                                 </label>
                             </div>
                             <div class="report-options-row">
-                                <label class="filter-cb-label" style="color: #b95d00; font-weight: bold;">
+                                <label class="filter-cb-label lbl-intern">
                                     <input type="checkbox" id="rFiltIntern" checked onchange="wendeFilterAn()"> Inkl. Intern
                                 </label>
-                                <label class="filter-cb-label" style="color: #1f7a3f; font-weight: bold;">
+                                <label class="filter-cb-label lbl-privat">
                                     <input type="checkbox" id="rFiltPrivat" checked onchange="wendeFilterAn()"> Inkl. Privat
                                 </label>
-                                <label class="filter-cb-label" style="color: #b42318; font-weight: bold;">
+                                <label class="filter-cb-label lbl-nach">
                                     <input type="checkbox" id="rFiltNach" checked onchange="wendeFilterAn()"> Inkl. Nachverfolg.
                                 </label>
                             </div>
@@ -307,17 +235,17 @@
                 </div>
                 
                 <div class="filter-group" id="unterobjektFilterContainer">
-                    <label><strong id="unterobjektFilterLabel">Unterobjekt:</strong></label>
+                    <label id="unterobjektFilterLabel">Unterobjekt:</label>
                     <div class="checkbox-container" id="unterobjektCheckboxes"></div>
                 </div>
 
                 <div class="filter-group" id="kontoFilterContainer">
-                    <label><strong>Konto filtern:</strong></label>
-                    <select id="filterKonto" onchange="wendeFilterAn()" style="padding: 10px; max-width: 220px; text-overflow: ellipsis;"></select>
+                    <label for="filterKonto">Konto filtern:</label>
+                    <select id="filterKonto" onchange="wendeFilterAn()" style="max-width: 240px;"></select>
                 </div>
                 
                 <div class="filter-group">
-                    <label><strong>Zeitraum:</strong></label>
+                    <label>Zeitraum:</label>
                     <div class="date-range-container">
                         <input type="date" id="filterDatumVon" onchange="wendeFilterAn()"> 
                         <span>bis</span> 
@@ -325,14 +253,23 @@
                     </div>
                 </div>
                 
-                <div class="filter-group" style="margin-left: auto;">
-                    <button onclick="filterLoeschen()" class="btn-reset">✖ Filter löschen</button>
+                <div class="filter-group" title="Für den Jahresabschluss: blendet interne Buchungen in Journal, Erfolgsrechnung und Bilanz aus.">
+                    <label>Ansicht:</label>
+                    <label class="switch">
+                        <input type="checkbox" id="abschlussAnsicht" onchange="setzeAbschlussAnsicht(this.checked)">
+                        <span class="switch-track"></span>
+                        <span>Abschluss-Ansicht</span>
+                    </label>
+                </div>
+
+                <div class="filter-group filter-group-rechts">
+                    <button onclick="filterLoeschen()" class="btn-reset">✕ Filter löschen</button>
                 </div>
             </div>
         </div>
 
         <div class="card">
-            <h2>Journal <span id="loadingJournal" style="font-size: 0.6em; font-weight: normal;">Lade Daten...</span></h2>
+            <h2 class="card-title">Journal <span id="loadingJournal" class="small-note">Lade Daten…</span></h2>
             <div class="table-container">
                 <table>
                     <thead>
@@ -344,7 +281,7 @@
                             <th class="sortable" onclick="sortiere('soll')">Soll <span id="sort_soll" class="sort-icon"></span></th>
                             <th class="sortable" onclick="sortiere('haben')">Haben <span id="sort_haben" class="sort-icon"></span></th>
                             <th class="sortable right" onclick="sortiere('betrag')">Betrag (CHF) <span id="sort_betrag" class="sort-icon"></span></th>
-                            <th style="text-align:center">Aktion</th>
+                            <th class="center">Aktion</th>
                         </tr>
                     </thead>
                     <tbody id="journalBody"></tbody>
@@ -372,9 +309,9 @@
                     <table class="report-total-table"><tfoot><tr class="total-row"><td>Total Aufwand</td><td class="right chf" id="totalAufwand">0.00</td></tr></tfoot></table>
                 </div>
             </div>
-            <div class="card" style="margin-top:30px; background: #f8fafc;">
+            <div class="card ergebnis-box">
                 <h3 id="erErgebnisTitel">Unternehmensergebnis</h3>
-                <div style="font-size: 1.5em; font-weight: bold;" id="erErgebnisWert" class="chf">CHF 0.00</div>
+                <div id="erErgebnisWert" class="chf ergebnis-wert">CHF 0.00</div>
             </div>
         </div>
     </div>
@@ -382,7 +319,7 @@
     <div id="bilanz" class="tab-content">
         <div id="filterPlaceholderBilanz"></div>
         <div class="card">
-            <h2>Bilanz <button class="btn-toggle-view" onclick="openEBModal()" style="font-size: 0.65em; padding: 5px 12px;">⚙️ Eröffnungsbilanz</button></h2>
+            <h2 class="card-title" style="justify-content: space-between; margin-bottom: 18px;">Bilanz <button class="btn-small" onclick="openEBModal()">⚙️ Eröffnungsbilanz</button></h2>
             <div class="report-filter-hinweis" id="bilanzUnterobjektHinweis"></div>
             <div class="report-warnung" id="bilanzKontoWarnung"></div>
             <div class="report-grid">
@@ -415,9 +352,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 style="margin:0;">Eröffnungsbilanz (Startsalden)</h2>
-                <span class="close-modal" onclick="closeEBModal()">&times;</span>
+                <button type="button" class="close-modal" onclick="closeEBModal()" aria-label="Schliessen">&times;</button>
             </div>
-            <p style="font-size: 0.9em; color: #666; margin-bottom: 20px;">Nur Bilanzkonten. Werte werden beim Verlassen des Feldes automatisch gespeichert.</p>
+            <p class="small-note" style="margin-bottom: 20px;">Nur Bilanzkonten. Werte werden beim Verlassen des Feldes automatisch gespeichert.</p>
             <div class="table-container">
                 <table>
                     <thead>
@@ -432,7 +369,7 @@
                 </table>
             </div>
             <div style="margin-top: 20px; text-align: right;">
-                <button class="btn-main" onclick="closeEBModal()" style="width:auto; padding: 10px 30px;">Fertig & Schliessen</button>
+                <button class="btn-main" onclick="closeEBModal()">Fertig & Schliessen</button>
             </div>
         </div>
     </div>
@@ -440,6 +377,9 @@
     <script type="module">
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
         import { db, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where } from "./js/firestore.js";
+        import { escapeHtml, formatCHF, formatDatumCH, todayLocal } from "./js/utils.js";
+        import { objekte, unterobjekte, kontenplan, ERSTES_JAHR, initJahresAuswahl } from "./js/config.js";
+        import { toast, bestaetigen } from "./js/ui.js";
         
         
         onAuthStateChanged(auth, (user) => {
@@ -455,50 +395,6 @@
 
         window.logout = () => signOut(auth);
 
-        const objekte = ["Creart", "Photographic", "Ferienwohnung"];
-
-        // Unterobjekte pro Objekt. Buchungen ohne Auswahl bleiben wie bisher
-        // nur dem Objekt selbst zugewiesen (unterobjekt = "").
-        const unterobjekte = {
-            "Ferienwohnung": ["2-Zimmer", "Studio"]
-        };
-        
-        const kontenplan = [
-            { id: "1000", name: "Kasse", typ: "Aktiv" },
-            { id: "1020", name: "Bankkonto", typ: "Aktiv" },
-            { id: "1030", name: "Bankkonto Privat", typ: "Aktiv" },
-            { id: "1100", name: "Debitoren", typ: "Aktiv" },
-            { id: "1300", name: "Transitorische Aktiven", typ: "Aktiv" },
-            { id: "1500", name: "Inventar", typ: "Aktiv" },
-            { id: "1530", name: "Fahrzeuge", typ: "Aktiv" },
-            { id: "1550", name: "Mobiliar", typ: "Aktiv" },
-            
-            { id: "2000", name: "Privat", typ: "Passiv" },
-            { id: "2100", name: "Hypothek", typ: "Passiv" },
-            { id: "2300", name: "Transitorische Passiven", typ: "Passiv" },
-            
-            { id: "3000", name: "Mieteinnahmen", typ: "Ertrag" },
-            { id: "3100", name: "Kaution", typ: "Ertrag" },
-            { id: "3200", name: "Verkaufserlöse", typ: "Ertrag" },
-            { id: "3400", name: "Sonstiger Ertrag", typ: "Ertrag" },
-            
-            { id: "4000", name: "Waren und Material", typ: "Aufwand" },
-            { id: "4050", name: "Anschaffungen", typ: "Aufwand" },
-            { id: "5000", name: "Personalaufwand", typ: "Aufwand" },
-            { id: "5050", name: "AHV", typ: "Aufwand" },
-            { id: "6000", name: "Strom", typ: "Aufwand" },
-            { id: "6050", name: "Mietaufwand", typ: "Aufwand" },
-            { id: "6100", name: "Unterhalt, Reparaturen", typ: "Aufwand" },
-            { id: "6200", name: "Verpflegung", typ: "Aufwand" },
-            { id: "6250", name: "Fahrzeug, Transport", typ: "Aufwand" },
-            { id: "6300", name: "Werbeaufwand", typ: "Aufwand" },
-            { id: "6400", name: "Dienstleistungen und Gebühren", typ: "Aufwand" },
-            { id: "6500", name: "Kurtaxen", typ: "Aufwand" },
-            { id: "6600", name: "Provisionen", typ: "Aufwand" },
-            { id: "6700", name: "Zinsaufwand", typ: "Aufwand" },
-            { id: "6800", name: "Abschreibungsaufwand", typ: "Aufwand" },
-            { id: "6900", name: "Sonstiger Aufwand", typ: "Aufwand" }
-        ];
 
         let lokaleBuchungen = [];
         let lokaleEB = []; 
@@ -507,8 +403,6 @@
         let aktuellesUnterobjekt = '';
         let istAbschlussAnsicht = false;
 
-        // Erstes Jahr mit Daten; die Auswahl reicht bis ins naechste Kalenderjahr.
-        const ERSTES_JAHR = 2026;
         // Anzahl Journalzeilen, die auf einmal gezeichnet werden.
         const JOURNAL_SEITE = 250;
         let aktiverTab = 'journal';
@@ -516,16 +410,8 @@
         // Aufgeteilte Jahresbuchungen; wird nur neu berechnet, wenn sich Daten oder Jahr aendern.
         let splitCache = { quelle: null, jahr: null, daten: [] };
         const kontoMap = new Map(kontenplan.map(k => [k.id, k]));
+        initJahresAuswahl(document.getElementById('selectedYear'));
 
-        function initJahresAuswahl() {
-            const sel = document.getElementById('selectedYear');
-            const aktuell = new Date().getFullYear();
-            const jahre = [];
-            for (let j = ERSTES_JAHR; j <= Math.max(aktuell + 1, ERSTES_JAHR); j++) jahre.push(j);
-            sel.innerHTML = jahre.map(j => `<option value="${j}">${j}</option>`).join('');
-            sel.value = String(Math.max(aktuell, ERSTES_JAHR));
-        }
-        initJahresAuswahl();
 
         // Die Echtzeit-Verbindungen bleiben offen, auch wenn der Tab im Hintergrund ist:
         // Firestore berechnet dann nur geaenderte Dokumente. Ein Trennen und spaeteres
@@ -534,12 +420,10 @@
         let unsubscribeEB = null;
         const SESSION_LAST_BUCHUNG_DATUM_KEY = 'creart_last_buchung_datum';
 
-        window.toggleAbschlussAnsicht = () => {
-            istAbschlussAnsicht = !istAbschlussAnsicht;
-            const btn = document.getElementById('btnAbschlussAnsicht');
-            btn.innerHTML = istAbschlussAnsicht ? '🔒 Abschluss Ansicht aktiv' : '👁️ Alles anzeigen';
-            btn.classList.toggle('active', istAbschlussAnsicht);
-            
+        // Abschluss-Ansicht: blendet interne Buchungen in Journal, ER und Bilanz aus.
+        window.setzeAbschlussAnsicht = (aktiv) => {
+            istAbschlussAnsicht = !!aktiv;
+            document.getElementById('abschlussAnsicht').checked = istAbschlussAnsicht;
             document.getElementById('rFiltIntern').checked = !istAbschlussAnsicht;
             wendeFilterAn();
         };
@@ -610,13 +494,6 @@
             document.getElementById('filterDatumBis').min = start; document.getElementById('filterDatumBis').max = end; document.getElementById('filterDatumBis').value = end;
         }
 
-        function getTodayIsoDate() {
-            const now = new Date();
-            const month = `${now.getMonth() + 1}`.padStart(2, '0');
-            const day = `${now.getDate()}`.padStart(2, '0');
-            return `${now.getFullYear()}-${month}-${day}`;
-        }
-
         function getSessionBuchungsdatum() {
             return window.sessionStorage.getItem(SESSION_LAST_BUCHUNG_DATUM_KEY);
         }
@@ -631,7 +508,7 @@
             const selectedYear = document.getElementById('selectedYear').value;
             const start = `${selectedYear}-01-01`;
             const end = `${selectedYear}-12-31`;
-            const today = getTodayIsoDate();
+            const today = todayLocal();
             const sessionDatum = getSessionBuchungsdatum();
 
             const isValidInYear = (value) => !!value && value >= start && value <= end;
@@ -727,14 +604,12 @@
             document.getElementById('rFiltErtrag').checked = true;
             document.getElementById('rFiltAufwand').checked = true;
 
-            if (istAbschlussAnsicht) toggleAbschlussAnsicht(); 
+            if (istAbschlussAnsicht) setzeAbschlussAnsicht(false);
 
             updateYearConstraints(year);
             wendeFilterAn();
         }
 
-        function formatCHF(r) { return (r / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 }); }
-        function formatDatumCH(d) { if(!d) return '-'; const p = d.split('-'); return `${p[2]}.${p[1]}.${p[0]}`; }
         function formatDateTimeCH(ts) {
             if (!ts) return '-';
             const dateObj = typeof ts?.toDate === 'function' ? ts.toDate() : new Date(ts);
@@ -761,14 +636,6 @@
                 el.className = 'save-feedback';
                 el.textContent = '';
             }, 3000);
-        }
-        function escapeHtml(text) {
-            return String(text ?? '')
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
         }
         function getKName(id) { return kontoMap.get(id)?.name || 'Unbekannt'; }
         function getKTyp(id) { return kontoMap.get(id)?.typ || ''; }
@@ -947,9 +814,11 @@
                 if(bearbeitungsModusId) {
                     await updateDoc(doc(db, "buchungen", bearbeitungsModusId), data);
                     zeigeSaveFeedback('✅ Buchung wurde erfolgreich aktualisiert.');
+                    toast('Buchung aktualisiert.', 'success');
                 } else {
                     await addDoc(collection(db, "buchungen"), { ...data, erstellt_am: serverTimestamp() });
                     zeigeSaveFeedback('✅ Buchung wurde erfolgreich gespeichert.');
+                    toast('Buchung gespeichert.', 'success');
                 }
                 resetForm();
             } catch (error) {
@@ -1000,22 +869,25 @@
             
             window.toggleAnteilFields();
 
-            document.getElementById('formTitel').innerText = "Buchung bearbeiten"; document.getElementById('btnAbbrechen').style.display = "block";
+            document.getElementById('formTitel').innerText = "Buchung bearbeiten"; document.getElementById('btnAbbrechen').style.display = "inline-flex";
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
         window.loescheBuchung = async (id) => {
             const b = lokaleBuchungen.find(x => x.id === id);
             const hatTeilbetraege = b && (b.anteil_intern > 0 || b.anteil_privat > 0);
-            const frage = hatTeilbetraege
-                ? "Buchung wirklich löschen? Es wird die ganze Buchung inklusive aller Teilbeträge gelöscht."
-                : "Buchung wirklich löschen?";
-            if(!confirm(frage)) return;
+            const ok = await bestaetigen({
+                titel: 'Buchung löschen?',
+                text: `${b ? `${formatDatumCH(b.datum_eingabe)} · ${b.text} · CHF ${formatCHF(b.betrag)}` : ''}${hatTeilbetraege ? '\n\nEs wird die ganze Buchung inklusive aller Teilbeträge gelöscht.' : ''}`,
+                ok: 'Löschen', gefahr: true
+            });
+            if(!ok) return;
             try {
                 await deleteDoc(doc(db, "buchungen", id));
                 if (bearbeitungsModusId === id) resetForm();
+                toast('Buchung gelöscht.', 'success');
             } catch (error) {
                 console.error(error);
-                zeigeSaveFeedback('❌ Buchung konnte nicht gelöscht werden. Bitte erneut versuchen.', 'error');
+                toast('Buchung konnte nicht gelöscht werden. Bitte erneut versuchen.', 'error');
             }
         };
 
@@ -1187,7 +1059,7 @@
             const body = document.getElementById('journalBody');
             const mehr = document.getElementById('journalMehr');
             if(daten.length === 0) {
-                body.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">Keine Buchungen gefunden.</td></tr>';
+                body.innerHTML = '<tr><td colspan="8" class="center muted" style="padding: 20px;">Keine Buchungen gefunden.</td></tr>';
                 mehr.innerHTML = '';
                 return;
             }
@@ -1212,7 +1084,7 @@
                 let displayTxt = escapeHtml(b.text);
                 // Blende "(Teilbuchung)" aus, wenn die Abschluss Ansicht aktiv ist
                 if (b.is_split_part && !istAbschlussAnsicht) {
-                    displayTxt += ' <i style="font-size:0.85em; color:#777;">(Teilbuchung)</i>';
+                    displayTxt += ' <i class="small-note">(Teilbuchung)</i>';
                 }
 
                 return `<tr ${trClass}>
@@ -1223,10 +1095,10 @@
                     <td>${escapeHtml(b.soll)} (${escapeHtml(getKName(b.soll))})</td>
                     <td>${escapeHtml(b.haben)} (${escapeHtml(getKName(b.haben))})</td>
                     <td class="right chf">${formatCHF(b.betrag)}</td>
-                    <td style="text-align:center">
-                        <button class="action-btn" title="Bearbeiten" onclick="bearbeiteBuchung('${b.id}')">✏️</button>
-                        <button class="action-btn" title="Löschen" onclick="loescheBuchung('${b.id}')">🗑️</button>
-                    </td>
+                    <td class="center"><span class="aktionen">
+                        <button class="action-btn" title="Bearbeiten" aria-label="Bearbeiten" onclick="bearbeiteBuchung('${b.id}')">✏️</button>
+                        <button class="action-btn danger" title="Löschen" aria-label="Löschen" onclick="loescheBuchung('${b.id}')">🗑️</button>
+                    </span></td>
                 </tr>`;
             }).join('');
 
@@ -1234,8 +1106,8 @@
                 const rest = daten.length - sichtbar.length;
                 const zahl = n => n.toLocaleString('de-CH');
                 mehr.innerHTML = `<span>${zahl(sichtbar.length)} von ${zahl(daten.length)} Buchungen angezeigt</span>
-                    <button type="button" onclick="zeigeMehrJournal(false)">Weitere ${zahl(Math.min(JOURNAL_SEITE, rest))} anzeigen</button>
-                    <button type="button" onclick="zeigeMehrJournal(true)">Alle anzeigen</button>`;
+                    <button type="button" class="btn-small" onclick="zeigeMehrJournal(false)">Weitere ${zahl(Math.min(JOURNAL_SEITE, rest))} anzeigen</button>
+                    <button type="button" class="btn-small" onclick="zeigeMehrJournal(true)">Alle anzeigen</button>`;
             } else {
                 mehr.innerHTML = '';
             }

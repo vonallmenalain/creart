@@ -4,145 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Master Admin-Tool | Audit Log</title>
+    <link rel="stylesheet" href="css/styles.css">
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        
-        header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h1 { color: var(--primary); margin: 0; font-size: 1.5rem; }
-        
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; text-decoration: none; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-back { background: var(--primary); color: white; }
-        .btn-undo { background: var(--accent); color: white; font-size: 0.85em; }
-        .btn-undo:hover { background: #2980b9; }
-
-        /* Filter-Sektion */
-        .admin-controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
+        /* Nur Regeln für das Änderungsprotokoll; Grundlagen in css/styles.css */
+        .admin-controls { display: flex; flex-direction: column; gap: 15px; }
         .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .filter-label { font-weight: bold; font-size: 0.9em; min-width: 120px; }
-        
-        .filter-btn { padding: 8px 15px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; font-size: 0.85em; transition: 0.2s; font-weight: 600; background: #fff; color: #666; }
-        
-        /* Permanente Farben für die Filter-Buttons (passend zu Badges) */
-        .filter-btn[data-filter="all"] { background: #f8f9fa; color: #333; }
-        .filter-btn[data-filter="all"].active { background: var(--primary); color: white; border-color: var(--primary); }
-        
-        .filter-btn[data-filter="buchungen"] { background: #e3f2fd; color: #1565c0; border-color: #bbdefb; }
-        .filter-btn[data-filter="buchungen"].active { background: #1565c0; color: white; }
-        
-        .filter-btn[data-filter="debitoren"] { background: #f3e5f5; color: #7b1fa2; border-color: #e1bee7; }
-        .filter-btn[data-filter="debitoren"].active { background: #7b1fa2; color: white; }
-        
-        .filter-btn[data-filter="kunden_adressen"] { background: #e8f5e9; color: #2e7d32; border-color: #c8e6c9; }
-        .filter-btn[data-filter="kunden_adressen"].active { background: #2e7d32; color: white; }
-        
-        .filter-btn[data-filter="ferienwohnung_buchungen"] { background: #fff8e1; color: #f57f17; border-color: #ffecb3; }
-        .filter-btn[data-filter="ferienwohnung_buchungen"].active { background: #f57f17; color: white; }
-        
-        .filter-btn[data-filter="verkaeufe_events"] { background: #fbe9e7; color: #d84315; border-color: #ffccbc; }
-        .filter-btn[data-filter="verkaeufe_events"].active { background: #d84315; color: white; }
-        
-        .filter-btn[data-filter="eroeffnungsbilanz"] { background: #eceff1; color: #455a64; border-color: #cfd8dc; }
-        .filter-btn[data-filter="eroeffnungsbilanz"].active { background: #455a64; color: white; }
+        .filter-label { font-weight: 600; font-size: var(--fs-sm); min-width: 110px; color: var(--secondary); }
+        .filter-btn { min-height: 34px; padding: 0 14px; border-radius: var(--radius-pill); border: 1px solid var(--border); cursor: pointer; font-size: var(--fs-sm); font-weight: 600; background: #fff; color: var(--secondary); }
+        .filter-btn:hover { border-color: var(--primary); }
+        .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .date-input { min-height: 34px !important; padding: 4px 8px !important; }
 
-        .date-input { padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; }
+        th { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.3px; }
+        td { vertical-align: middle; }
+        .main-row { cursor: pointer; }
+        .main-row:hover td { background-color: var(--surface-muted); }
 
-        /* Log-Tabelle */
-        .log-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 14px 15px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
-        th { background: #f8f9fa; color: var(--primary); font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
-        
-        .main-row { cursor: pointer; transition: 0.2s; }
-        .main-row:hover { background-color: #f8fafc; }
-        
         /* Aufklappbarer Detail-Bereich */
-        .details-row { display: none; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        .details-row { display: none; background: var(--surface-muted); }
         .details-row.open { display: table-row; }
+        .details-row td { white-space: normal; }
         .details-container { padding: 20px; }
+        .details-ids { margin-bottom: 15px; color: var(--text-muted); font-family: monospace; font-size: var(--fs-sm); }
         .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .data-box { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .data-box h4 { margin: 0 0 12px 0; color: #64748b; font-size: 0.85em; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; display: flex; justify-content: space-between; }
-        
-        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        .data-table td { padding: 6px 8px; border-bottom: 1px solid #f8fafc; }
-        .data-table td:first-child { font-weight: 600; color: #475569; width: 40%; text-transform: capitalize; }
-        
-        .toggle-icon { display: inline-block; transition: transform 0.3s; color: #94a3b8; font-size: 0.8em; margin-left: 10px; }
+        .data-box { background: #fff; border: 1px solid #e2e8f0; border-radius: var(--radius); padding: 15px; border-top-width: 3px; }
+        .data-box h4 { margin: 0 0 12px 0; color: var(--text-muted); font-size: var(--fs-sm); text-transform: uppercase; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+        .data-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: normal; }
+        .data-table td:first-child { font-weight: 600; color: var(--secondary); width: 40%; text-transform: capitalize; }
+        .toggle-icon { display: inline-block; transition: transform 0.2s; color: var(--text-muted); font-size: 0.9em; margin-left: 10px; }
         .main-row.open .toggle-icon { transform: rotate(180deg); }
+        .zeilen-aktionen { display: inline-flex; align-items: center; justify-content: flex-end; }
 
-        .badge { padding: 4px 10px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
-        .col-buchungen { background: #e3f2fd; color: #1565c0; }
-        .col-debitoren { background: #f3e5f5; color: #7b1fa2; }
-        .col-adressen { background: #e8f5e9; color: #2e7d32; }
-        .col-fw { background: #fff8e1; color: #f57f17; }
-        .col-events { background: #fbe9e7; color: #d84315; }
-        .col-eb { background: #eceff1; color: #455a64; }
-        
+        .badge { padding: 3px 10px; border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 600; }
+        .col-buchungen { background: #e3f2fd; color: #0d47a1; }
+        .col-debitoren { background: #f3e5f5; color: #6a1b9a; }
+        .col-adressen { background: #e8f5e9; color: #1b5e20; }
+        .col-fw { background: #fff8e1; color: #8a4b00; }
+        .col-events { background: #fbe9e7; color: #a63a12; }
+        .col-eb { background: #eceff1; color: #37474f; }
         .act-create { background: #d4edda; color: #155724; }
-        .act-update { background: #fff3cd; color: #856404; }
+        .act-update { background: #fff3cd; color: #6d4c00; }
         .act-delete { background: #f8d7da; color: #721c24; }
-        /* ==========================================================================
-           📱 MOBILE OPTIMIERUNG (Nur für Bildschirme < 768px)
-           ========================================================================== */
+
         @media (max-width: 768px) {
-            /* Globale Anpassungen (Abstände verringern um Platz zu sparen) */
-            body { padding: 10px; }
-            .card, .collapsible-body, .modal-content, .admin-controls, .login-card { padding: 15px; }
-            .modal-content { width: 92%; margin: 10% auto; padding: 20px; }
-            
-            /* Header & Navigation flexibel stapeln */
-            .app-header, header { flex-direction: column; align-items: stretch; gap: 15px; text-align: center; }
-            .header-controls { flex-direction: column; width: 100%; gap: 10px; }
-            .btn-switch, .btn-toggle-view { width: 100%; text-align: center; box-sizing: border-box; }
-            
-            /* Tabs horizontal scrollbar machen anstatt sie unschön umzubrechen */
-            .nav-tabs { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: none; padding-bottom: 5px; gap: 8px;}
-            .tab-btn { white-space: nowrap; flex-shrink: 0; font-size: 0.95em; padding: 12px 18px; border-radius: 8px; margin: 0; border: 1px solid #ddd; }
-            .tab-btn.active { border: 2px solid var(--primary); }
-            
-            /* Formular-Grid auflösen -> Alles untereinander anordnen */
-            .form-grid { display: flex !important; flex-direction: column; gap: 15px; }
-            .form-group, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-12 { width: 100%; }
-            
-            /* Filter-Leisten & Suchfelder anpassen */
-            .global-filter-bar, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; gap: 15px; }
-            .filter-inline, .date-range-container { flex-direction: column; align-items: stretch; width: 100%; gap: 10px;}
-            .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
-            .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
-            
-            /* Buttons auf volle Breite ziehen (Daumen-freundlich) */
-            .btn-main, .btn-cancel, .btn-reset, .btn-secondary, .event-form-actions button { width: 100% !important; margin-bottom: 5px; box-sizing: border-box; }
-            .event-form-actions { flex-direction: column; width: 100%; gap: 10px; }
-            
-            /* Report-Grids (ER / Bilanz) & Admin Diffs untereinander */
-            .report-grid, .diff-grid { grid-template-columns: 1fr; gap: 30px; }
-            .fw-summary-dashboard { grid-template-columns: 1fr; }
-            .kontenplan-grid { grid-template-columns: 1fr; gap: 15px; }
-            
-            /* Tabellen auf Mobile: Tasten vergrößern für besseres Tippen */
-            .action-btn, .btn-icon { padding: 12px; font-size: 1.3em; } 
-            
-            /* Admin-Tool spezifisch */
             .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
-            .filter-row .filter-btn { width: 100%; text-align: center; }
-            
-            /* Login spezifisch */
-            .checkbox-group { align-items: flex-start; }
-            .checkbox-group input { margin-top: 4px; }
+            .filter-row .filter-btn { width: 100%; }
+            .diff-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <h1>🛡️ Master Admin-Tool & Log</h1>
-        <a href="eingabe.html" class="btn btn-back">⬅️ Zurück zur App</a>
+    <header class="app-header">
+        <h1 class="app-title">Änderungsprotokoll</h1>
+        <div class="app-header-actions">
+            <nav class="app-nav" aria-label="Bereiche">
+                <a href="eingabe.html" class="app-nav-link">Buchhaltung</a>
+                <a href="verwaltung.html" class="app-nav-link">Verwaltung</a>
+                <a href="admin.html" class="app-nav-link active" aria-current="page">Log</a>
+            </nav>
+            <button type="button" class="btn btn-ghost danger" onclick="logout()">Abmelden</button>
+        </div>
     </header>
 
-    <div class="admin-controls">
+    <div class="card admin-controls">
         <div class="filter-row">
             <span class="filter-label">Bereich:</span>
             <button class="filter-btn active" data-filter="all">Alle</button>
@@ -155,15 +81,16 @@
         </div>
         <div class="filter-row">
             <span class="filter-label">Zeitraum:</span>
-            <input type="date" id="dateVon" class="date-input">
+            <input type="date" id="dateVon" class="date-input" aria-label="Von">
             <span>bis</span>
-            <input type="date" id="dateBis" class="date-input">
-            <button class="filter-btn" onclick="window.resetDates()" style="background: #f1f5f9; color: #64748b;">Datum zurücksetzen</button>
-            <button class="filter-btn" onclick="window.refreshLogs()" style="background: #e8f5e9; color: #2e7d32;">🔄 Jetzt aktualisieren</button>
+            <input type="date" id="dateBis" class="date-input" aria-label="Bis">
+            <button class="btn-small" onclick="window.resetDates()">Datum zurücksetzen</button>
+            <button class="btn-small" onclick="window.refreshLogs()" title="Die Liste aktualisiert sich automatisch. Neu verbinden, falls etwas hängt.">🔄 Neu laden</button>
         </div>
     </div>
 
-    <div class="log-card">
+    <div class="card">
+        <div class="table-container">
         <table>
             <thead>
                 <tr>
@@ -171,18 +98,20 @@
                     <th style="width: 140px;">Bereich</th>
                     <th style="width: 100px;">Aktion</th>
                     <th>Kurz-Info (Klick für Details)</th>
-                    <th style="text-align:right; width: 140px;">Aktion</th>
+                    <th class="right" style="width: 150px;"></th>
                 </tr>
             </thead>
             <tbody id="logBody">
-                <tr><td colspan="5" style="text-align:center; padding: 40px;">Lade Logs...</td></tr>
+                <tr><td colspan="5" class="center muted" style="padding: 40px;">Lade Logs…</td></tr>
             </tbody>
         </table>
+        </div>
     </div>
-</div>
 
 <script type="module">
-    import { auth, onAuthStateChanged } from "./js/firebase.js";
+    import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
+    import { escapeHtml } from "./js/utils.js";
+    import { toast, bestaetigen } from "./js/ui.js";
     import { db, collection, query, orderBy, limit, onSnapshot, doc, getDoc, setDoc, deleteDoc, where, Timestamp } from "./js/firestore.js";
 
     let currentFilter = "all";
@@ -190,6 +119,8 @@
     // Laden nur noch neue Log-Einträge (vorher bis zu 100 Lesevorgänge pro Minute).
     let unsubscribeLogs = null;
     const offeneZeilen = new Set();
+
+    window.logout = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
         if (!user) window.location.href = "index.html";
@@ -245,26 +176,17 @@
     function abonniereLogs() {
         if (unsubscribeLogs) unsubscribeLogs();
         const tbody = document.getElementById('logBody');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px;">Lade Logs...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="center muted" style="padding: 40px;">Lade Logs...</td></tr>';
         unsubscribeLogs = onSnapshot(buildLogsQuery(), renderTable, (error) => {
             console.error("Firestore Error:", error);
             if (String(error.message || '').includes("index")) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color:#b42318;">Für diesen Filter fehlt ein Index in der Firebase Console. Der Link dazu steht in der Browser-Konsole (F12).</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="center" style="padding: 40px; color: var(--danger);">Für diesen Filter fehlt ein Index in der Firebase Console. Der Link dazu steht in der Browser-Konsole (F12).</td></tr>';
             } else {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color:#b42318;">Fehler beim Laden der Logs.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="center" style="padding: 40px; color: var(--danger);">Fehler beim Laden der Logs.</td></tr>';
             }
         });
     }
 
-    // Hilfsfunktion: Formatiert Rappen in CHF
-    function escapeHtml(text) {
-        return String(text ?? '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
-    }
     function formatVal(key, val) {
         if(val === null || val === undefined) return '-';
         if(key.includes('rappen') || key === 'betrag') return `CHF ${(val/100).toFixed(2)}`;
@@ -280,9 +202,9 @@
 
     // Erstellt eine schöne HTML-Tabelle aus einem Objekt
     function renderDataBox(title, dataObj, color) {
-        if(!dataObj) return `<div class="data-box" style="border-top: 3px solid #cbd5e1;"><h4>${title}</h4><i>Keine Daten</i></div>`;
+        if(!dataObj) return `<div class="data-box" style="border-top-color: #cbd5e1;"><h4>${title}</h4><i>Keine Daten</i></div>`;
         
-        let html = `<div class="data-box" style="border-top: 3px solid ${color};">
+        let html = `<div class="data-box" style="border-top-color: ${color};">
                         <h4>${title}</h4>
                         <table class="data-table">`;
         
@@ -302,7 +224,7 @@
         tbody.innerHTML = '';
         
         if(snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px;">Keine Einträge gefunden.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="center muted" style="padding: 40px;">Keine Einträge gefunden.</td></tr>';
             return;
         }
 
@@ -331,10 +253,10 @@
                 <td><span class="badge col-${getShortCol(log.collection)}">${colLabel}</span></td>
                 <td><span class="badge act-${log.action.toLowerCase()}">${log.action}</span></td>
                 <td style="font-size:0.95em;">${shortInfo}</td>
-                <td style="text-align:right;">
-                    <button class="btn btn-undo" onclick="window.doUndo(event, '${id}')">↩️ Undo</button>
-                    <span class="toggle-icon">▼</span>
-                </td>
+                <td class="right"><span class="zeilen-aktionen">
+                    <button class="btn-small" onclick="window.doUndo(event, '${id}')" title="Diese Änderung rückgängig machen">↩️ Undo</button>
+                    <span class="toggle-icon" aria-hidden="true">▾</span>
+                </span></td>
             `;
             
             // Detail-Zeile erstellen
@@ -356,8 +278,8 @@
             trDetails.id = `detail_${id}`;
             trDetails.innerHTML = `
                 <td colspan="5" class="details-container">
-                    <div style="margin-bottom: 15px; color: #94a3b8; font-family: monospace; font-size: 0.85em;">
-                        Document ID: ${log.documentId} | Log ID: ${id}
+                    <div class="details-ids">
+                        Document ID: ${escapeHtml(log.documentId)} | Log ID: ${escapeHtml(id)}
                     </div>
                     ${diffHtml}
                 </td>
@@ -394,7 +316,7 @@
     window.doUndo = async (event, id) => {
         event.stopPropagation(); // Verhindert, dass die Zeile beim Klick auf Undo aufklappt
         
-        if(!confirm("Aktion wirklich rückgängig machen?")) return;
+        if(!await bestaetigen({ titel: 'Änderung rückgängig machen?', text: 'Der Datensatz wird auf den Stand vor dieser Änderung zurückgesetzt.', ok: 'Rückgängig machen', gefahr: true })) return;
         
         try {
             const snap = await getDoc(doc(db, "audit_logs", id));
@@ -406,9 +328,10 @@
             } else {
                 await setDoc(ref, log.before_data);
             }
-            alert("Undo erfolgreich ausgeführt!");
+            toast('Änderung rückgängig gemacht.', 'success');
         } catch (e) { 
-            alert("Fehler beim Undo: " + e.message); 
+            console.error(e);
+            toast('Fehler beim Rückgängigmachen: ' + e.message, 'error', 6000); 
         }
     };
 </script>
