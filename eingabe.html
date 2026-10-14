@@ -73,7 +73,10 @@
         .filter-cb-label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.95em; }
         .filter-cb-label input { transform: scale(1.2); cursor: pointer; }
         .date-range-container { display: flex; align-items: center; gap: 10px; }
-        
+        /* ER/Bilanz-Optionen: Zeile "Inkl. Ertrag / Inkl. Aufwand" über "Inkl. Intern / Privat / Nachverfolg." */
+        .report-options-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .report-options-typ { color: var(--primary); padding-bottom: 6px; border-bottom: 1px dashed #cbd5e1; }
+
         .btn-main { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1em; }
         .btn-main:disabled { opacity: 0.7; cursor: wait; }
         .btn-cancel { background: var(--danger); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
@@ -148,6 +151,7 @@
             .global-filter-bar, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; gap: 15px; }
             .filter-inline, .date-range-container { flex-direction: column; align-items: stretch; width: 100%; gap: 10px;}
             .checkbox-container, #filterJournalOptions, #filterReportOptions { border-left: none !important; padding-left: 0 !important; margin-left: 0 !important; flex-direction: column; align-items: flex-start; gap: 10px; }
+            .report-options-row { flex-direction: column; align-items: flex-start; gap: 10px; }
             .filter-group select, .filter-group input { width: 100%; box-sizing: border-box; }
             
             /* Unterobjekt-Auswahl untereinander statt nebeneinander */
@@ -272,16 +276,27 @@
                             </label>
                         </div>
 
-                        <div id="filterReportOptions" style="display: none; gap: 15px; border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px;">
-                            <label class="filter-cb-label" style="color: #b95d00; font-weight: bold;">
-                                <input type="checkbox" id="rFiltIntern" checked onchange="wendeFilterAn()"> Inkl. Intern
-                            </label>
-                            <label class="filter-cb-label" style="color: #1f7a3f; font-weight: bold;">
-                                <input type="checkbox" id="rFiltPrivat" checked onchange="wendeFilterAn()"> Inkl. Privat
-                            </label>
-                            <label class="filter-cb-label" style="color: #b42318; font-weight: bold;">
-                                <input type="checkbox" id="rFiltNach" checked onchange="wendeFilterAn()"> Inkl. Nachverfolg.
-                            </label>
+                        <div id="filterReportOptions" style="display: none; flex-direction: column; gap: 8px; border-left: 2px solid #cbd5e1; padding-left: 15px; margin-left: 5px;">
+                            <!-- Überkategorie: gilt nur für Buchungen, die als Intern, Privat oder Nachverfolgung markiert sind -->
+                            <div class="report-options-row report-options-typ" title="Gilt nur für Buchungen, die als Intern, Privat oder Nachverfolgung markiert sind">
+                                <label class="filter-cb-label" style="font-weight: bold;">
+                                    <input type="checkbox" id="rFiltErtrag" checked onchange="wendeFilterAn()"> Inkl. Ertrag
+                                </label>
+                                <label class="filter-cb-label" style="font-weight: bold;">
+                                    <input type="checkbox" id="rFiltAufwand" checked onchange="wendeFilterAn()"> Inkl. Aufwand
+                                </label>
+                            </div>
+                            <div class="report-options-row">
+                                <label class="filter-cb-label" style="color: #b95d00; font-weight: bold;">
+                                    <input type="checkbox" id="rFiltIntern" checked onchange="wendeFilterAn()"> Inkl. Intern
+                                </label>
+                                <label class="filter-cb-label" style="color: #1f7a3f; font-weight: bold;">
+                                    <input type="checkbox" id="rFiltPrivat" checked onchange="wendeFilterAn()"> Inkl. Privat
+                                </label>
+                                <label class="filter-cb-label" style="color: #b42318; font-weight: bold;">
+                                    <input type="checkbox" id="rFiltNach" checked onchange="wendeFilterAn()"> Inkl. Nachverfolg.
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -714,6 +729,8 @@
             document.getElementById('rFiltIntern').checked = true;
             document.getElementById('rFiltPrivat').checked = true;
             document.getElementById('rFiltNach').checked = true;
+            document.getElementById('rFiltErtrag').checked = true;
+            document.getElementById('rFiltAufwand').checked = true;
 
             if (istAbschlussAnsicht) toggleAbschlussAnsicht(); 
 
@@ -759,6 +776,7 @@
                 .replaceAll("'", '&#039;');
         }
         function getKName(id) { return kontenplan.find(k => k.id === id)?.name || 'Unbekannt'; }
+        function getKTyp(id) { return kontenplan.find(k => k.id === id)?.typ || ''; }
 
         function renderKontenplanOverview() {
             const container = document.getElementById('kontenplanOverview');
@@ -1008,6 +1026,19 @@
             }
             if (!document.getElementById('rFiltNach').checked) {
                 datenReports = datenReports.filter(b => !b.nachverfolgung);
+            }
+            // Überkategorie Ertrag/Aufwand: blendet markierte Buchungen (Intern, Privat, Nachverfolgung)
+            // aus, die ein Ertrags- bzw. Aufwandskonto berühren. Unmarkierte Buchungen bleiben unberührt.
+            const inklErtrag = document.getElementById('rFiltErtrag').checked;
+            const inklAufwand = document.getElementById('rFiltAufwand').checked;
+            if (!inklErtrag || !inklAufwand) {
+                datenReports = datenReports.filter(b => {
+                    if (!b.intern_only && !b.privat && !b.nachverfolgung) return true;
+                    const typen = [getKTyp(b.soll), getKTyp(b.haben)];
+                    if (!inklErtrag && typen.includes('Ertrag')) return false;
+                    if (!inklAufwand && typen.includes('Aufwand')) return false;
+                    return true;
+                });
             }
             // Die Eroeffnungsbilanz wird nur pro Objekt gefuehrt, nicht pro Unterobjekt.
             // Bei aktivem Unterobjekt-Filter bleiben die Startsalden deshalb aussen vor.
