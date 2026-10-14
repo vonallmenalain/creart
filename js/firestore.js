@@ -13,5 +13,5 @@ export const db = initializeFirestore(app, {
 export {
     collection, doc, query, where, orderBy, limit,
     onSnapshot, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
-    serverTimestamp, Timestamp
+    writeBatch, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";

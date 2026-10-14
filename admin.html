@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Master Admin-Tool | Audit Log</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CreArt">
+    <script type="module" src="js/pwa.js"></script>
     <style>
         /* Nur Regeln für das Änderungsprotokoll; Grundlagen in css/styles.css */
         .admin-controls { display: flex; flex-direction: column; gap: 15px; }
@@ -121,7 +130,8 @@
     import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
     import { escapeHtml } from "./js/utils.js";
     import { toast, bestaetigen } from "./js/ui.js";
-    import { db, collection, query, orderBy, limit, onSnapshot, doc, getDoc, setDoc, deleteDoc, where, Timestamp } from "./js/firestore.js";
+    import { db, collection, query, orderBy, limit, onSnapshot, doc, getDoc, where, Timestamp } from "./js/firestore.js";
+    import { setzen, loeschen } from "./js/daten.js";
 
     let currentFilter = "all";
     // Live-Verbindung statt Neuladen jede Minute: Firestore berechnet nach dem ersten
@@ -330,12 +340,10 @@
         try {
             const snap = await getDoc(doc(db, "audit_logs", id));
             const log = snap.data();
-            const ref = doc(db, log.collection, log.documentId);
-            
             if (log.action === "CREATE") {
-                await deleteDoc(ref);
+                await loeschen(log.collection, log.documentId);
             } else {
-                await setDoc(ref, log.before_data);
+                await setzen(log.collection, log.documentId, log.before_data);
             }
             toast('Änderung rückgängig gemacht.', 'success');
         } catch (e) { 
