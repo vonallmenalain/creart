@@ -56,7 +56,7 @@ export async function anlegenMitNummer(art, daten, bekannteListe) {
         try {
             const nummer = await runTransaction(db, async (tx) => {
                 const neu = await naechsteNummer(tx, art, art.hoechste(bekannteListe));
-                tx.set(ref, { ...daten, [art.feld]: neu, erstellt_am: serverTimestamp() });
+                tx.set(ref, { ...daten, [art.feld]: neu, erstellt_am: serverTimestamp(), geaendert_am: serverTimestamp() });
                 return neu;
             });
             return { id: ref.id, nummer };
@@ -76,7 +76,7 @@ export function nummerNachtragen(art, id, bekannteListe) {
         const snap = await tx.get(ref);
         if (!snap.exists() || snap.data()[art.feld]) return null;
         const neu = await naechsteNummer(tx, art, art.hoechste(bekannteListe));
-        tx.update(ref, { [art.feld]: neu });
+        tx.update(ref, { [art.feld]: neu, geaendert_am: serverTimestamp() });
         return neu;
     });
 }

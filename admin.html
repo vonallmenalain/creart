@@ -44,6 +44,11 @@
         .toggle-icon { display: inline-block; transition: transform 0.2s; color: var(--text-muted); font-size: 0.9em; margin-left: 10px; }
         .main-row.open .toggle-icon { transform: rotate(180deg); }
         .zeilen-aktionen { display: inline-flex; align-items: center; justify-content: flex-end; }
+        .abgleich-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+        .abgleich-kopf h2 { margin: 0 0 4px 0; font-size: var(--fs-lg); }
+        .abgleich-kopf p { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); max-width: 640px; }
+        .abgleich-tabelle { margin-top: 12px; }
+        .abgleich-tabelle td, .abgleich-tabelle th { font-size: var(--fs-sm); }
 
         .badge { padding: 3px 10px; border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 600; }
         .col-buchungen { background: #e3f2fd; color: #0d47a1; }
@@ -69,6 +74,9 @@
             .filter-label { width: 100%; min-width: 0; }
             .filter-row .date-input { flex: 1; min-width: 0; }
             .diff-grid { grid-template-columns: 1fr; }
+            .abgleich-tabelle .abgleich-bis { display: none; }
+            .abgleich-tabelle th, .abgleich-tabelle td { padding: 8px 6px; white-space: normal; }
+            .abgleich-kopf .btn { width: 100%; }
         }
     </style>
 </head>
@@ -126,14 +134,38 @@
         </div>
     </div>
 
+    <div class="card">
+        <div class="abgleich-kopf">
+            <div>
+                <h2>Datenabgleich auf diesem Gerät</h2>
+                <p>Buchhaltung und Verwaltung laden vom Server nur geänderte Datensätze. Alle 30 Tage werden die Daten automatisch einmal vollständig abgeglichen. Falls etwas fehlt oder nicht stimmt, hier einen vollständigen Abgleich auslösen.</p>
+            </div>
+            <button type="button" class="btn btn-outline" onclick="window.allesNeuLaden()">Alle Daten neu laden</button>
+        </div>
+        <div class="table-container abgleich-tabelle">
+            <table>
+                <thead><tr><th>Bereich</th><th class="right">Anzahl</th><th>Letzter Vollabgleich</th><th class="abgleich-bis">Abgeglichen bis</th></tr></thead>
+                <tbody id="abgleichBody"></tbody>
+            </table>
+        </div>
+    </div>
+
 <script type="module">
     import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
     import { escapeHtml } from "./js/utils.js";
     import { toast, bestaetigen } from "./js/ui.js";
     import { db, collection, query, orderBy, limit, onSnapshot, doc, getDoc, where, Timestamp } from "./js/firestore.js";
-    import { setzen, loeschen } from "./js/daten.js";
+    import { setzen, loeschen, LOESCHMARKEN } from "./js/daten.js";
+    import { abgleichStatus, vollstaendigNeuLaden } from "./js/sync.js";
 
     let currentFilter = "all";
+    // Technische Sammlungen (Zähler, Löschmarken) gehören nicht ins Änderungsprotokoll.
+    const TECHNISCHE_SAMMLUNGEN = new Set(['zaehler', LOESCHMARKEN]);
+    const BEREICHE = {
+        buchungen: 'Journal', eroeffnungsbilanz: 'Eröffnungsbilanz', verkaeufe_events: 'Events',
+        kunden_adressen: 'Kunden', debitoren: 'Debitoren', ferienwohnung_buchungen: 'Ferienwohnung',
+        [LOESCHMARKEN]: 'Löschungen'
+    };
     // Live-Verbindung statt Neuladen jede Minute: Firestore berechnet nach dem ersten
     // Laden nur noch neue Log-Einträge (vorher bis zu 100 Lesevorgänge pro Minute).
     let unsubscribeLogs = null;
@@ -168,7 +200,33 @@
         window.refreshLogs = () => abonniereLogs();
 
         abonniereLogs();
+        renderAbgleich();
     }
+
+    function formatZeitpunkt(ms) {
+        return ms ? new Date(ms).toLocaleString('de-CH', { dateStyle: 'short', timeStyle: 'short' }) : '–';
+    }
+
+    function renderAbgleich() {
+        const status = abgleichStatus();
+        const namen = Object.keys(BEREICHE).filter(name => status[name]);
+        document.getElementById('abgleichBody').innerHTML = namen.length === 0
+            ? '<tr><td colspan="4" class="center muted">Noch kein Abgleich auf diesem Gerät. Er startet beim Öffnen von Buchhaltung oder Verwaltung.</td></tr>'
+            : namen.map(name => `
+                <tr>
+                    <td>${escapeHtml(BEREICHE[name])}</td>
+                    <td class="right">${Number(status[name].anzahl) || 0}</td>
+                    <td>${formatZeitpunkt(status[name].voll)}</td>
+                    <td class="abgleich-bis">${formatZeitpunkt(status[name].seit)}</td>
+                </tr>`).join('');
+    }
+
+    window.allesNeuLaden = async () => {
+        if (!await bestaetigen({ titel: 'Alle Daten neu laden?', text: 'Beim nächsten Öffnen von Buchhaltung und Verwaltung werden alle Daten einmal vollständig vom Server geladen. Das ist nur nötig, wenn Daten fehlen oder nicht stimmen.', ok: 'Neu laden' })) return;
+        vollstaendigNeuLaden();
+        renderAbgleich();
+        toast('Erledigt. Beim nächsten Öffnen werden alle Daten vollständig geladen.', 'success', 6000);
+    };
 
     function buildLogsQuery() {
         const von = document.getElementById('dateVon').value;
@@ -210,10 +268,7 @@
         if(val === null || val === undefined) return '-';
         if(key.includes('rappen') || key === 'betrag') return `CHF ${(val/100).toFixed(2)}`;
         if(key === 'online' && Array.isArray(val)) return val.join(', ');
-        if(key.includes('datum') || key === 'erstellt_am' || key === 'aktualisiert_am') {
-            if(val.seconds) return new Date(val.seconds*1000).toLocaleString('de-CH');
-            return val;
-        }
+        if(typeof val === 'object' && typeof val.seconds === 'number') return new Date(val.seconds*1000).toLocaleString('de-CH');
         if(typeof val === 'boolean') return val ? 'Ja' : 'Nein';
         if(typeof val === 'object') return JSON.stringify(val); // Für Produkte-Arrays
         return val;
@@ -241,13 +296,14 @@
     function renderTable(snapshot) {
         const tbody = document.getElementById('logBody');
         tbody.innerHTML = '';
-        
-        if(snapshot.empty) {
+        const eintraege = snapshot.docs.filter(logDoc => !TECHNISCHE_SAMMLUNGEN.has(logDoc.data().collection));
+
+        if(eintraege.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="center muted" style="padding: 40px;">Keine Einträge gefunden.</td></tr>';
             return;
         }
 
-        snapshot.forEach(logDoc => {
+        eintraege.forEach(logDoc => {
             const log = logDoc.data();
             const id = logDoc.id;
             
@@ -332,14 +388,57 @@
         return c;
     }
 
+    // Vergleichbare Form eines Datensatzes: ohne Zeitstempel, die bei jedem Speichern neu gesetzt
+    // werden, und mit sortierten Feldern.
+    const ZEITFELDER = new Set(['erstellt_am', 'geaendert_am', 'aktualisiert_am']);
+    function vergleichbar(wert, obersteEbene = true) {
+        if (wert && typeof wert.toMillis === 'function') return wert.toMillis();
+        if (Array.isArray(wert)) return wert.map(w => vergleichbar(w, false));
+        if (wert && typeof wert === 'object') {
+            return Object.fromEntries(Object.keys(wert).sort()
+                .filter(k => !(obersteEbene && ZEITFELDER.has(k)))
+                .map(k => [k, vergleichbar(wert[k], false)]));
+        }
+        return wert;
+    }
+    function gleicherStand(a, b) {
+        return JSON.stringify(vergleichbar(a || {})) === JSON.stringify(vergleichbar(b || {}));
+    }
+
+    // Prüft, ob der Datensatz seit dieser Änderung nochmals geändert wurde.
+    function undoHinweis(log, aktuell) {
+        if (log.action === 'CREATE') {
+            if (!aktuell) return { abbruch: 'Der Datensatz existiert nicht mehr – es gibt nichts rückgängig zu machen.' };
+            return gleicherStand(aktuell, log.after_data)
+                ? { text: 'Der erstellte Datensatz wird wieder gelöscht.' }
+                : { text: 'Achtung: Der Datensatz wurde nach dem Erstellen nochmals geändert. Er wird trotzdem gelöscht – auch die späteren Änderungen gehen verloren.', warnung: true };
+        }
+        if (log.action === 'DELETE') {
+            return aktuell
+                ? { text: 'Achtung: Der Datensatz existiert inzwischen wieder (neu erstellt oder bereits wiederhergestellt). Er wird mit dem gelöschten Stand überschrieben.', warnung: true }
+                : { text: 'Der gelöschte Datensatz wird wiederhergestellt.' };
+        }
+        if (!aktuell) {
+            return { text: 'Achtung: Der Datensatz wurde inzwischen gelöscht. Er wird im Zustand vor dieser Änderung wiederhergestellt.', warnung: true };
+        }
+        return gleicherStand(aktuell, log.after_data)
+            ? { text: 'Der Datensatz wird auf den Stand vor dieser Änderung zurückgesetzt.' }
+            : { text: 'Achtung: Der Datensatz wurde nach dieser Änderung nochmals geändert. Er wird trotzdem auf den Stand vor dieser Änderung zurückgesetzt – die späteren Änderungen gehen verloren.', warnung: true };
+    }
+
     window.doUndo = async (event, id) => {
         event.stopPropagation(); // Verhindert, dass die Zeile beim Klick auf Undo aufklappt
-        
-        if(!await bestaetigen({ titel: 'Änderung rückgängig machen?', text: 'Der Datensatz wird auf den Stand vor dieser Änderung zurückgesetzt.', ok: 'Rückgängig machen', gefahr: true })) return;
-        
+        const knopf = event.currentTarget instanceof HTMLButtonElement ? event.currentTarget : null;
+        if (knopf) knopf.disabled = true;
         try {
-            const snap = await getDoc(doc(db, "audit_logs", id));
-            const log = snap.data();
+            const log = (await getDoc(doc(db, "audit_logs", id))).data();
+            if (!log) { toast('Dieser Log-Eintrag existiert nicht mehr.', 'error'); return; }
+            const aktuellSnap = await getDoc(doc(db, log.collection, log.documentId));
+            const hinweis = undoHinweis(log, aktuellSnap.exists() ? aktuellSnap.data() : null);
+            if (hinweis.abbruch) { toast(hinweis.abbruch, 'info', 6000); return; }
+
+            if (!await bestaetigen({ titel: hinweis.warnung ? 'Trotzdem rückgängig machen?' : 'Änderung rückgängig machen?', text: hinweis.text, ok: 'Rückgängig machen', gefahr: true })) return;
+
             if (log.action === "CREATE") {
                 await loeschen(log.collection, log.documentId);
             } else {
@@ -349,6 +448,8 @@
         } catch (e) { 
             console.error(e);
             toast('Fehler beim Rückgängigmachen: ' + e.message, 'error', 6000); 
+        } finally {
+            if (knopf) knopf.disabled = false;
         }
     };
 </script>

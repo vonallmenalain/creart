@@ -413,7 +413,7 @@
 
     <script type="module">
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
-        import { db, collection, onSnapshot, query, orderBy, where } from "./js/firestore.js";
+        import { abonniere } from "./js/sync.js";
         import { anlegen, aendern, setzen, loeschen } from "./js/daten.js";
         import { escapeHtml, formatCHF, formatDatumCH, todayLocal, parseRappen } from "./js/utils.js";
         import { objekte, unterobjekte, kontenplan, ERSTES_JAHR, initJahresAuswahl } from "./js/config.js";
@@ -451,9 +451,8 @@
         initJahresAuswahl(document.getElementById('selectedYear'));
 
 
-        // Die Echtzeit-Verbindungen bleiben offen, auch wenn der Tab im Hintergrund ist:
-        // Firestore berechnet dann nur geaenderte Dokumente. Ein Trennen und spaeteres
-        // Neuverbinden (nach mehr als 30 Minuten) wuerde dagegen alles neu lesen.
+        // Buchungen und Eroeffnungsbilanz aller Jahre kommen aus dem lokalen Cache; vom Server
+        // werden nur Aenderungen geladen (js/sync.js). Ein Jahreswechsel braucht keine neue Abfrage.
         let unsubscribeBuchungen = null;
         let unsubscribeEB = null;
         const SESSION_LAST_BUCHUNG_DATUM_KEY = 'creart_last_buchung_datum';
@@ -469,7 +468,8 @@
         window.changeYear = () => {
             const year = document.getElementById('selectedYear').value;
             updateYearConstraints(year);
-            ladeDaten();
+            journalLimit = JOURNAL_SEITE;
+            updateView();
         };
 
         function getUnterobjekteFuer(objekt) {
@@ -749,37 +749,30 @@
         };
 
         function ladeDaten() {
-            const year = document.getElementById('selectedYear').value;
-            const startDate = `${year}-01-01`;
-            const endDate = `${year}-12-31`;
-
             document.getElementById('loadingJournal').style.display = 'inline';
 
             if (unsubscribeBuchungen) unsubscribeBuchungen();
             if (unsubscribeEB) unsubscribeEB();
 
-            const qBuchungen = query(
-                collection(db, "buchungen"),
-                where("datum_eingabe", ">=", startDate),
-                where("datum_eingabe", "<=", endDate),
-                orderBy("datum_eingabe", "desc")
-            );
-
-            unsubscribeBuchungen = onSnapshot(qBuchungen, (snap) => {
+            unsubscribeBuchungen = abonniere("buchungen", (dokumente, info) => {
+                if (info.nurStatus) return;
                 document.getElementById('loadingJournal').style.display = 'none';
-                lokaleBuchungen = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                lokaleBuchungen = dokumente;
                 updateView();
+            }, (error) => {
+                console.error(error);
+                document.getElementById('loadingJournal').style.display = 'none';
+                toast('Buchungen konnten nicht vom Server geladen werden.', 'error', 6000);
             });
 
-            const qEB = query(
-                collection(db, "eroeffnungsbilanz"),
-                where("year", "==", year)
-            );
-
-            unsubscribeEB = onSnapshot(qEB, (snap) => {
-                lokaleEB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            unsubscribeEB = abonniere("eroeffnungsbilanz", (dokumente, info) => {
+                if (info.nurStatus) return;
+                lokaleEB = dokumente;
                 if (document.getElementById('ebModal').style.display === 'block') aktualisiereEBWerte();
                 updateView();
+            }, (error) => {
+                console.error(error);
+                toast('Eröffnungsbilanz konnte nicht vom Server geladen werden.', 'error', 6000);
             });
         }
 

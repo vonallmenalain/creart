@@ -724,7 +724,8 @@
 
     <script type="module">
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
-        import { db, collection, updateDoc, doc, serverTimestamp, onSnapshot, query, where } from "./js/firestore.js";
+        import { serverTimestamp } from "./js/firestore.js";
+        import { abonniere } from "./js/sync.js";
         import { anlegen, aendern, loeschen, stapel } from "./js/daten.js";
         import { KUNDEN, debitorenFuer, anlegenMitNummer, nummerNachtragen } from "./js/nummern.js";
         import { escapeHtml, formatCHF, formatDatumCH, todayLocal, textVergleich, verzoegert, parseRappen } from "./js/utils.js";
@@ -738,9 +739,8 @@
         const monateNamen = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
         const debitorOnlineOptionen = ["A", "O", "B", "WV", "Mail", "Telefon"];
 
-        // Die Echtzeit-Verbindungen bleiben offen, auch wenn der Tab im Hintergrund ist:
-        // Firestore berechnet dann nur geaenderte Dokumente. Ein Trennen und spaeteres
-        // Neuverbinden (nach mehr als 30 Minuten) wuerde dagegen alles neu lesen.
+        // Die Daten kommen aus dem lokalen Cache; vom Server werden nur Aenderungen geladen
+        // (js/sync.js). Die Verbindungen bleiben offen, auch wenn der Tab im Hintergrund ist.
         let unsubscribeVerkaeufe = null;
         let unsubscribeAdressen = null;
         let unsubscribeDebitoren = null;
@@ -1615,7 +1615,7 @@
                     const nummer = await nummerNachtragen(KUNDEN, adresse.id, adressenDaten);
                     if (!nummer) continue;
                     const verknuepft = debitorenDaten.filter(d => d.kunde_id === adresse.id && !d.kunde_nummer);
-                    for (const debitor of verknuepft) await updateDoc(doc(db, 'debitoren', debitor.id), { kunde_nummer: nummer });
+                    for (const debitor of verknuepft) await aendern('debitoren', debitor.id, { kunde_nummer: nummer });
                 }
             } catch (error) {
                 console.error('Kundennummern nachtragen:', error);
@@ -1627,13 +1627,12 @@
         function ladeAdressen() {
             if (unsubscribeAdressen) unsubscribeAdressen();
             if (!adressenGeladen) document.getElementById('adressListeBody').innerHTML = '<tr><td colspan="7" class="center muted" style="padding: 20px;">Lade Adressen…</td></tr>';
-            // includeMetadataChanges: meldet auch, wenn offline erfasste Kunden auf dem Server
-            // angekommen sind (nur Status-Änderung), damit fehlende Nummern nachgetragen werden.
-            unsubscribeAdressen = onSnapshot(collection(db, 'kunden_adressen'), { includeMetadataChanges: true }, (snap) => {
-                const nurStatus = adressenGeladen && snap.docChanges().length === 0;
-                if (!snap.metadata.fromCache && !snap.metadata.hasPendingWrites) ensureKundenNummern();
-                if (nurStatus) return;
-                adressenDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Meldet auch reine Status-Änderungen (z.B. offline erfasste Kunden sind auf dem Server
+            // angekommen), damit fehlende Nummern nachgetragen werden.
+            unsubscribeAdressen = abonniere('kunden_adressen', (dokumente, info) => {
+                if (info.serverAktuell && !info.ausstehend) ensureKundenNummern();
+                if (info.nurStatus) return;
+                adressenDaten = dokumente;
                 adressenGeladen = true;
                 adressSuchtextCache.clear();
                 renderOderVormerken('adressen');
@@ -2243,13 +2242,10 @@
         function ladeDebitoren() {
             if (unsubscribeDebitoren) unsubscribeDebitoren();
             if (debitorenDaten.length === 0) document.getElementById('debitorListeBody').innerHTML = '<tr><td colspan="13" class="center muted" style="padding: 20px;">Lade Debitoren…</td></tr>';
-            let debitorenGeladen = false;
-            unsubscribeDebitoren = onSnapshot(collection(db, 'debitoren'), { includeMetadataChanges: true }, (snap) => {
-                const nurStatus = debitorenGeladen && snap.docChanges().length === 0;
-                if (!snap.metadata.fromCache && !snap.metadata.hasPendingWrites) { ensureDebitorIds(); ensureKundenNummern(); }
-                if (nurStatus) return;
-                debitorenGeladen = true;
-                debitorenDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            unsubscribeDebitoren = abonniere('debitoren', (dokumente, info) => {
+                if (info.serverAktuell && !info.ausstehend) { ensureDebitorIds(); ensureKundenNummern(); }
+                if (info.nurStatus) return;
+                debitorenDaten = dokumente;
                 baueHistoryIndex();
                 aktualisiereNummerVorschlag();
                 renderOderVormerken('debitoren');
@@ -2261,18 +2257,24 @@
             });
         }
 
-        function ladeVerkaeufe() {
+        // Events aller Jahre aus dem Cache; angezeigt wird das gewaehlte Jahr.
+        let alleVerkaeufe = [];
+        function wendeVerkaeufeJahrAn() {
             const year = document.getElementById('selectedYear').value;
-            document.getElementById('loadingVerkaeufe').style.display = 'inline';
+            verkaeufeDaten = alleVerkaeufe.filter(event => String(event.datum || '').startsWith(`${year}-`));
+            syncMatrixFilterState();
+            renderMatrixFilterControls();
+            renderOderVormerken('verkaeufe');
+        }
 
-            if (unsubscribeVerkaeufe) unsubscribeVerkaeufe();
-            const eventsQuery = query(collection(db, 'verkaeufe_events'), where('datum', '>=', `${year}-01-01`), where('datum', '<=', `${year}-12-31`));
-            unsubscribeVerkaeufe = onSnapshot(eventsQuery, (snap) => {
+        function ladeVerkaeufe() {
+            if (unsubscribeVerkaeufe) { wendeVerkaeufeJahrAn(); return; }
+            document.getElementById('loadingVerkaeufe').style.display = 'inline';
+            unsubscribeVerkaeufe = abonniere('verkaeufe_events', (dokumente, info) => {
+                if (info.nurStatus) return;
                 document.getElementById('loadingVerkaeufe').style.display = 'none';
-                verkaeufeDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                syncMatrixFilterState();
-                renderMatrixFilterControls();
-                renderOderVormerken('verkaeufe');
+                alleVerkaeufe = dokumente;
+                wendeVerkaeufeJahrAn();
             }, (error) => {
                 console.error(error);
                 document.getElementById('loadingVerkaeufe').style.display = 'none';
@@ -3115,11 +3117,10 @@
         function ladeFerienwohnung() {
             if (unsubscribeFerienwohnung) unsubscribeFerienwohnung();
 
-            // Lade alle Buchungen aller Jahre (kein Jahresfilter)
-            const q = collection(db, 'ferienwohnung_buchungen');
-
-            unsubscribeFerienwohnung = onSnapshot(q, (snap) => {
-                ferienwohnungDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Alle Buchungen aller Jahre (kein Jahresfilter)
+            unsubscribeFerienwohnung = abonniere('ferienwohnung_buchungen', (dokumente, info) => {
+                if (info.nurStatus) return;
+                ferienwohnungDaten = dokumente;
                 renderOderVormerken('ferienwohnung');
                 if (document.getElementById('fwExportModal').style.display === 'flex') {
                     window.renderFwExportPreview();
