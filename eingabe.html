@@ -65,6 +65,14 @@
         .subobjekt-hint { font-size: 0.85em; color: #666; flex: 1; min-width: 220px; }
         #unterobjektCheckboxes .filter-cb-label { white-space: nowrap; }
         .subobjekt-tag { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 10px; background: #e8f0fe; color: var(--primary); font-size: 0.8em; font-weight: bold; }
+        .report-warnung { display: none; margin-bottom: 20px; padding: 12px 15px; background: #fdecec; border: 1px solid #f3c7c3; border-radius: 8px; color: #b42318; font-size: 0.9em; line-height: 1.5; }
+        .bilanz-kontrolle { margin-top: 15px; padding: 10px 12px; border-radius: 8px; font-size: 0.9em; display: flex; justify-content: space-between; gap: 10px; }
+        .bilanz-kontrolle.ok { background: #edf7ed; color: #1f7a3f; border: 1px solid #c8e6c9; }
+        .bilanz-kontrolle.fehler { background: #fdecec; color: #b42318; border: 1px solid #f3c7c3; font-weight: bold; }
+        .journal-mehr { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin-top: 15px; color: #666; font-size: 0.9em; }
+        .journal-mehr:empty { display: none; }
+        .journal-mehr button { background: #fff; color: var(--primary); border: 1px solid #ccd1d9; padding: 8px 16px; border-radius: 6px; cursor: pointer; font: inherit; font-weight: 600; }
+        .journal-mehr button:hover { border-color: var(--primary); }
         .report-filter-hinweis { display: none; margin-bottom: 20px; padding: 12px 15px; background: #e8f0fe; border: 1px solid #d2e3fc; border-radius: 8px; color: var(--secondary); font-size: 0.9em; line-height: 1.5; }
 
         .global-filter-bar { display: flex; flex-wrap: wrap; gap: 20px; background: #e8f0fe; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d2e3fc; align-items: flex-end;}
@@ -120,6 +128,7 @@
         .close-modal { font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa; }
         .close-modal:hover { color: var(--danger); }
         .eb-input { width: 100px; text-align: right; border: 1px solid #ddd; border-radius: 4px; padding: 5px; }
+        .eb-input.fehler { border-color: var(--danger); background: #fdecec; }
         
         .kontenplan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
         .konten-kategorie { margin-bottom: 25px; }
@@ -185,11 +194,7 @@
 
     <div class="app-header">
         <h1 class="app-title">Buchhaltung 
-            <select id="selectedYear" class="year-select-title" onchange="changeYear()">
-                <option value="2026" selected>2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
-            </select>
+            <select id="selectedYear" class="year-select-title" onchange="changeYear()"></select>
         </h1>
         <div class="header-controls">
             <button id="btnAbschlussAnsicht" onclick="toggleAbschlussAnsicht()" class="btn-toggle-view">👁️ Alles anzeigen</button>
@@ -345,6 +350,7 @@
                     <tbody id="journalBody"></tbody>
                 </table>
             </div>
+            <div class="journal-mehr" id="journalMehr"></div>
         </div>
     </div>
 
@@ -353,6 +359,7 @@
         <div class="card">
             <h2>Erfolgsrechnung (ER)</h2>
             <div class="report-filter-hinweis" id="erUnterobjektHinweis"></div>
+            <div class="report-warnung" id="erKontoWarnung"></div>
             <div class="report-grid">
                 <div class="report-column">
                     <h3>Ertrag</h3>
@@ -377,6 +384,7 @@
         <div class="card">
             <h2>Bilanz <button class="btn-toggle-view" onclick="openEBModal()" style="font-size: 0.65em; padding: 5px 12px;">⚙️ Eröffnungsbilanz</button></h2>
             <div class="report-filter-hinweis" id="bilanzUnterobjektHinweis"></div>
+            <div class="report-warnung" id="bilanzKontoWarnung"></div>
             <div class="report-grid">
                 <div class="report-column">
                     <h3>Aktiven</h3>
@@ -392,6 +400,7 @@
                     <table class="report-total-table"><tfoot><tr class="total-row"><td>Total Passiven</td><td class="right chf" id="totalPassiven">0.00</td></tr></tfoot></table>
                 </div>
             </div>
+            <div class="bilanz-kontrolle" id="bilanzKontrolle"></div>
         </div>
     </div>
 
@@ -518,6 +527,26 @@
         let bearbeitungsModusId = null;
         let aktuellesUnterobjekt = '';
         let istAbschlussAnsicht = false;
+
+        // Erstes Jahr mit Daten; die Auswahl reicht bis ins naechste Kalenderjahr.
+        const ERSTES_JAHR = 2026;
+        // Anzahl Journalzeilen, die auf einmal gezeichnet werden.
+        const JOURNAL_SEITE = 250;
+        let aktiverTab = 'journal';
+        let journalLimit = JOURNAL_SEITE;
+        // Aufgeteilte Jahresbuchungen; wird nur neu berechnet, wenn sich Daten oder Jahr aendern.
+        let splitCache = { quelle: null, jahr: null, daten: [] };
+        const kontoMap = new Map(kontenplan.map(k => [k.id, k]));
+
+        function initJahresAuswahl() {
+            const sel = document.getElementById('selectedYear');
+            const aktuell = new Date().getFullYear();
+            const jahre = [];
+            for (let j = ERSTES_JAHR; j <= Math.max(aktuell + 1, ERSTES_JAHR); j++) jahre.push(j);
+            sel.innerHTML = jahre.map(j => `<option value="${j}">${j}</option>`).join('');
+            sel.value = String(Math.max(aktuell, ERSTES_JAHR));
+        }
+        initJahresAuswahl();
 
         let unsubscribeBuchungen = null;
         let unsubscribeEB = null;
@@ -651,6 +680,7 @@
         }
 
         window.openTab = function(tabId, ev) {
+            aktiverTab = tabId;
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
@@ -673,6 +703,8 @@
                 filterBar.style.display = 'none';
                 if(tabId === 'kp') renderKontenplanOverview();
             }
+            // Berechnet und zeichnet nur, was im neu geoeffneten Tab sichtbar ist.
+            if (['journal', 'er', 'bilanz'].includes(tabId)) updateView();
         };
 
         window.openEBModal = () => { renderEB(); document.getElementById('ebModal').style.display = 'block'; };
@@ -775,8 +807,8 @@
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#039;');
         }
-        function getKName(id) { return kontenplan.find(k => k.id === id)?.name || 'Unbekannt'; }
-        function getKTyp(id) { return kontenplan.find(k => k.id === id)?.typ || ''; }
+        function getKName(id) { return kontoMap.get(id)?.name || 'Unbekannt'; }
+        function getKTyp(id) { return kontoMap.get(id)?.typ || ''; }
 
         function renderKontenplanOverview() {
             const container = document.getElementById('kontenplanOverview');
@@ -796,26 +828,56 @@
             });
         }
 
+        // Ungueltige Werte (z.B. frueher gespeichertes NaN) zaehlen als 0.
+        function getEBBetrag(key) {
+            const eintrag = lokaleEB.find(e => e.id === key);
+            return eintrag && Number.isFinite(eintrag.betrag) ? eintrag.betrag : 0;
+        }
+
         function renderEB() {
             const year = document.getElementById('selectedYear').value;
-            const body = document.getElementById('ebBody'); body.innerHTML = '';
-            kontenplan.filter(k => k.typ === "Aktiv" || k.typ === "Passiv").forEach(konto => {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td>${konto.id} - ${konto.name}</td>`;
-                objekte.forEach(objekt => {
+            const body = document.getElementById('ebBody');
+            body.innerHTML = kontenplan.filter(k => k.typ === "Aktiv" || k.typ === "Passiv").map(konto => {
+                const zellen = objekte.map(objekt => {
                     const key = `${year}_${konto.id}_${objekt}`;
-                    const ebEintrag = lokaleEB.find(e => e.id === key);
-                    const startWert = ebEintrag ? (ebEintrag.betrag / 100).toFixed(2) : "0.00";
-                    row.innerHTML += `<td class="right"><input type="number" step="0.01" class="eb-input" value="${startWert}" onblur="saveEB('${konto.id}', '${objekt}', this.value)"></td>`;
-                });
-                body.appendChild(row);
+                    const startWert = (getEBBetrag(key) / 100).toFixed(2);
+                    return `<td class="right"><input type="number" step="0.01" class="eb-input" data-eb-key="${key}" value="${startWert}" onblur="saveEB('${konto.id}', '${objekt}', this)"></td>`;
+                }).join('');
+                return `<tr><td>${konto.id} - ${konto.name}</td>${zellen}</tr>`;
+            }).join('');
+        }
+
+        // Aktualisiert die Werte im offenen Dialog, ohne das Feld zu ersetzen, in dem gerade getippt wird.
+        function aktualisiereEBWerte() {
+            document.querySelectorAll('#ebBody .eb-input').forEach(input => {
+                if (input === document.activeElement) return;
+                input.value = (getEBBetrag(input.dataset.ebKey) / 100).toFixed(2);
             });
         }
 
-        window.saveEB = async (accountId, objekt, value) => {
+        window.saveEB = async (accountId, objekt, input) => {
             const year = document.getElementById('selectedYear').value;
-            const rappen = Math.round(parseFloat(value) * 100);
-            await setDoc(doc(db, "eroeffnungsbilanz", `${year}_${accountId}_${objekt}`), { year, accountId, objekt, betrag: rappen });
+            const key = `${year}_${accountId}_${objekt}`;
+            const roh = String(input.value).trim();
+            const rappen = roh === '' ? 0 : Math.round(parseFloat(roh) * 100);
+            const bisher = lokaleEB.find(e => e.id === key);
+
+            input.classList.remove('fehler');
+            if (!Number.isFinite(rappen)) {
+                input.value = (getEBBetrag(key) / 100).toFixed(2);
+                return;
+            }
+            input.value = (rappen / 100).toFixed(2);
+            // Nur speichern, wenn sich der Wert wirklich geaendert hat.
+            if (bisher ? bisher.betrag === rappen : rappen === 0) return;
+
+            try {
+                await setDoc(doc(db, "eroeffnungsbilanz", key), { year, accountId, objekt, betrag: rappen });
+            } catch (error) {
+                console.error(error);
+                input.classList.add('fehler');
+                input.title = 'Konnte nicht gespeichert werden. Bitte erneut versuchen.';
+            }
         };
 
         function ladeDaten() {
@@ -853,7 +915,7 @@
 
             unsubscribeEB = onSnapshot(qEB, (snap) => {
                 lokaleEB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                renderEB(); 
+                if (document.getElementById('ebModal').style.display === 'block') aktualisiereEBWerte();
                 updateView();
             });
         }
@@ -868,28 +930,56 @@
             const sollKonto = document.getElementById('sollKonto').value;
             const habenKonto = document.getElementById('habenKonto').value;
 
-            if(!d || !t || !b) return alert("Daten fehlen!");
+            if(!d || !t.trim() || !b) {
+                zeigeSaveFeedback("❌ Bitte Datum, Text und Betrag ausfüllen.", "error");
+                return;
+            }
+            const year = document.getElementById('selectedYear').value;
+            if(!d.startsWith(`${year}-`)) {
+                zeigeSaveFeedback(`❌ Das Datum liegt nicht im gewählten Jahr ${year}. Bitte oben zuerst das Jahr wechseln.`, "error");
+                return;
+            }
             if(sollKonto === habenKonto) {
                 zeigeSaveFeedback("❌ Soll- und Haben-Konto dürfen nicht identisch sein.", "error");
                 return;
             }
 
+            const betragRappen = Math.round(parseFloat(b) * 100);
+            if(!Number.isFinite(betragRappen) || betragRappen === 0) {
+                zeigeSaveFeedback("❌ Der Betrag muss eine Zahl ungleich 0 sein.", "error");
+                return;
+            }
+
             const anteilInternVal = document.getElementById('anteilIntern').value;
             const anteilPrivatVal = document.getElementById('anteilPrivat').value;
+            const anteilIntern = anteilInternVal ? Math.round(parseFloat(anteilInternVal) * 100) : 0;
+            const anteilPrivat = anteilPrivatVal ? Math.round(parseFloat(anteilPrivatVal) * 100) : 0;
+            if(!Number.isFinite(anteilIntern) || !Number.isFinite(anteilPrivat) || anteilIntern < 0 || anteilPrivat < 0) {
+                zeigeSaveFeedback("❌ Die Anteile Intern/Privat müssen positive Beträge sein.", "error");
+                return;
+            }
+            if((anteilIntern > 0 || anteilPrivat > 0) && betragRappen < 0) {
+                zeigeSaveFeedback("❌ Teilbeträge Intern/Privat sind nur bei positiven Beträgen möglich.", "error");
+                return;
+            }
+            if(anteilIntern + anteilPrivat > betragRappen && (anteilIntern > 0 || anteilPrivat > 0)) {
+                zeigeSaveFeedback("❌ Anteil Intern und Anteil Privat zusammen dürfen nicht grösser als der Betrag sein.", "error");
+                return;
+            }
 
             const data = { 
                 datum_eingabe: d, 
                 objekt: document.getElementById('objekt').value, 
                 unterobjekt: getAktivesUnterobjekt(),
                 text: t, 
-                betrag: Math.round(parseFloat(b) * 100), 
+                betrag: betragRappen, 
                 soll: sollKonto,
                 haben: habenKonto,
                 intern_only: document.getElementById('nurIntern').checked,
                 privat: document.getElementById('privat').checked,
                 nachverfolgung: document.getElementById('nachverfolgung').checked,
-                anteil_intern: anteilInternVal ? Math.round(parseFloat(anteilInternVal) * 100) : 0,
-                anteil_privat: anteilPrivatVal ? Math.round(parseFloat(anteilPrivatVal) * 100) : 0
+                anteil_intern: anteilIntern,
+                anteil_privat: anteilPrivat
             };
             
             setSessionBuchungsdatum(d);
@@ -917,6 +1007,7 @@
 
         function resetForm() {
             bearbeitungsModusId = null; document.getElementById('formTitel').innerText = "Neue Buchung erfassen";
+            document.getElementById('btnAbbrechen').style.display = 'none';
             document.getElementById('text').value = ''; 
             document.getElementById('betrag').value = '';
             document.getElementById('nurIntern').checked = false; 
@@ -956,23 +1047,41 @@
             document.getElementById('formTitel').innerText = "Buchung bearbeiten"; document.getElementById('btnAbbrechen').style.display = "block";
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
-        window.loescheBuchung = async (id) => { if(confirm("Buchung wirklich löschen?")) await deleteDoc(doc(db, "buchungen", id)); };
+        window.loescheBuchung = async (id) => {
+            const b = lokaleBuchungen.find(x => x.id === id);
+            const hatTeilbetraege = b && (b.anteil_intern > 0 || b.anteil_privat > 0);
+            const frage = hatTeilbetraege
+                ? "Buchung wirklich löschen? Es wird die ganze Buchung inklusive aller Teilbeträge gelöscht."
+                : "Buchung wirklich löschen?";
+            if(!confirm(frage)) return;
+            try {
+                await deleteDoc(doc(db, "buchungen", id));
+                if (bearbeitungsModusId === id) resetForm();
+            } catch (error) {
+                console.error(error);
+                zeigeSaveFeedback('❌ Buchung konnte nicht gelöscht werden. Bitte erneut versuchen.', 'error');
+            }
+        };
 
-        window.wendeFilterAn = () => updateView();
+        window.wendeFilterAn = () => { journalLimit = JOURNAL_SEITE; updateView(); };
         window.sortiere = (s) => {
             if(aktuelleSortierung.spalte === s) aktuelleSortierung.richtung = aktuelleSortierung.richtung === 'asc' ? 'desc' : 'asc';
             else { aktuelleSortierung.spalte = s; aktuelleSortierung.richtung = 'asc'; }
+            journalLimit = JOURNAL_SEITE;
+            updateView();
+        };
+        window.zeigeMehrJournal = (alle) => {
+            journalLimit = alle ? Infinity : journalLimit + JOURNAL_SEITE;
             updateView();
         };
 
-        function updateView() {
-            const year = document.getElementById('selectedYear').value;
-            let jahrBuchungen = [...lokaleBuchungen].filter(b => b.datum_eingabe && b.datum_eingabe.startsWith(year));
-            
-            let datenBasis = [];
+        // 1. SPLIT-LOGIK FÜR TEILBETRÄGE (zwischengespeichert, solange Daten und Jahr gleich bleiben)
+        function getJahresBasis(year) {
+            if (splitCache.quelle === lokaleBuchungen && splitCache.jahr === year) return splitCache.daten;
 
-            // 1. SPLIT-LOGIK FÜR TEILBETRÄGE
-            jahrBuchungen.forEach(b => {
+            const datenBasis = [];
+            lokaleBuchungen.forEach(b => {
+                if (!b.datum_eingabe || !b.datum_eingabe.startsWith(year)) return;
                 let parts = [];
                 let remainingBetrag = b.betrag;
                 
@@ -1001,6 +1110,14 @@
                 parts.forEach(p => datenBasis.push(p));
             });
 
+            splitCache = { quelle: lokaleBuchungen, jahr: year, daten: datenBasis };
+            return datenBasis;
+        }
+
+        function updateView() {
+            const year = document.getElementById('selectedYear').value;
+            let datenBasis = getJahresBasis(year);
+
             // 2. GLOBALE FILTER (Objekt & Datum)
             const ausgewaehlteObjekte = Array.from(document.querySelectorAll('.filter-cb:checked')).map(cb => cb.value);
             datenBasis = datenBasis.filter(b => ausgewaehlteObjekte.includes(b.objekt));
@@ -1016,7 +1133,13 @@
             if(fVon) datenBasis = datenBasis.filter(b => b.datum_eingabe >= fVon);
             if(fBis) datenBasis = datenBasis.filter(b => b.datum_eingabe <= fBis);
             
-            // 3. BERECHNUNG FÜR ER / BILANZ (Inklusive-Filter + Abschluss Ansicht)
+            // 3. BERECHNUNG FÜR ER / BILANZ (Inklusive-Filter + Abschluss Ansicht) – nur wenn sichtbar
+            if (aktiverTab === 'er' || aktiverTab === 'bilanz') berechneReports(datenBasis, ausgewaehlteObjekte, aktiveUnterobjekte);
+            // 4. JOURNAL – nur wenn sichtbar
+            if (aktiverTab === 'journal') berechneJournal(datenBasis);
+        }
+
+        function berechneReports(datenBasis, ausgewaehlteObjekte, aktiveUnterobjekte) {
             let datenReports = [...datenBasis];
             if (istAbschlussAnsicht || !document.getElementById('rFiltIntern').checked) {
                 datenReports = datenReports.filter(b => !b.intern_only);
@@ -1045,8 +1168,10 @@
             const ebObjekte = aktiveUnterobjekte.length > 0 ? [] : ausgewaehlteObjekte;
             zeigeUnterobjektHinweis(aktiveUnterobjekte);
             berechneAbschluesse(datenReports, ebObjekte);
-            
-            // 4. FILTER FÜR JOURNAL (Exklusive-Filter + Abschluss Ansicht)
+        }
+
+        // FILTER FÜR JOURNAL (Exklusive-Filter + Abschluss Ansicht)
+        function berechneJournal(datenBasis) {
             let datenJournal = [...datenBasis];
             
             if (istAbschlussAnsicht) {
@@ -1103,10 +1228,18 @@
         }
 
         function renderJournal(daten) {
-            const body = document.getElementById('journalBody'); body.innerHTML = '';
-            if(daten.length === 0) { body.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">Keine Buchungen gefunden.</td></tr>'; return; }
-            
-            daten.forEach(b => {
+            const body = document.getElementById('journalBody');
+            const mehr = document.getElementById('journalMehr');
+            if(daten.length === 0) {
+                body.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">Keine Buchungen gefunden.</td></tr>';
+                mehr.innerHTML = '';
+                return;
+            }
+
+            // Alle Zeilen als Text sammeln und die Tabelle nur einmal setzen. Ein "innerHTML +=" pro Zeile
+            // baut die ganze Tabelle jedes Mal neu auf und wird mit vielen Buchungen sehr langsam.
+            const sichtbar = daten.slice(0, journalLimit);
+            body.innerHTML = sichtbar.map(b => {
                 let trClass = '';
                 if (b.nachverfolgung) trClass = 'class="nachverfolgung-row"';
                 else if (b.intern_only) trClass = 'class="intern-row"';
@@ -1126,7 +1259,7 @@
                     displayTxt += ' <i style="font-size:0.85em; color:#777;">(Teilbuchung)</i>';
                 }
 
-                body.innerHTML += `<tr ${trClass}>
+                return `<tr ${trClass}>
                     <td>${formatDateTimeCH(b.erstellt_am)}</td>
                     <td>${formatDatumCH(b.datum_eingabe)}</td>
                     <td>${objektAnzeige}</td>
@@ -1139,7 +1272,17 @@
                         <button class="action-btn" title="Löschen" onclick="loescheBuchung('${b.id}')">🗑️</button>
                     </td>
                 </tr>`;
-            });
+            }).join('');
+
+            if (daten.length > sichtbar.length) {
+                const rest = daten.length - sichtbar.length;
+                const zahl = n => n.toLocaleString('de-CH');
+                mehr.innerHTML = `<span>${zahl(sichtbar.length)} von ${zahl(daten.length)} Buchungen angezeigt</span>
+                    <button type="button" onclick="zeigeMehrJournal(false)">Weitere ${zahl(Math.min(JOURNAL_SEITE, rest))} anzeigen</button>
+                    <button type="button" onclick="zeigeMehrJournal(true)">Alle anzeigen</button>`;
+            } else {
+                mehr.innerHTML = '';
+            }
         }
 
         function berechneAbschluesse(daten, ebObjekte) {
@@ -1151,36 +1294,45 @@
             kontenplan.forEach(k => {
                 salden[k.id] = 0; 
                 ebObjekte.forEach(obj => {
-                    const ebEintrag = lokaleEB.find(e => e.id === `${year}_${k.id}_${obj}`);
-                    if(ebEintrag) {
-                        salden[k.id] += ebEintrag.betrag;
-                        if(k.typ === "Aktiv") tEbAktiv += ebEintrag.betrag;
-                        if(k.typ === "Passiv") tEbPassiv += ebEintrag.betrag;
-                    }
+                    const betrag = getEBBetrag(`${year}_${k.id}_${obj}`);
+                    if (betrag === 0) return;
+                    salden[k.id] += betrag;
+                    if(k.typ === "Aktiv") tEbAktiv += betrag;
+                    if(k.typ === "Passiv") tEbPassiv += betrag;
                 });
             });
-            
+
+            // Buchungen mit unbekanntem Konto oder ungueltigem Betrag wuerden die Abschluesse
+            // still verfaelschen. Sie werden nicht verrechnet, aber gesammelt und angezeigt.
+            const problemBuchungen = [];
             daten.forEach(b => {
-                const kSoll = kontenplan.find(k => k.id === b.soll), kHaben = kontenplan.find(k => k.id === b.haben);
-                if(kSoll && (kSoll.typ === "Aktiv" || kSoll.typ === "Aufwand")) salden[b.soll] += b.betrag; else if(kSoll) salden[b.soll] -= b.betrag;
-                if(kHaben && (kHaben.typ === "Aktiv" || kHaben.typ === "Aufwand")) salden[b.haben] -= b.betrag; else if(kHaben) salden[b.haben] += b.betrag;
+                const kSoll = kontoMap.get(b.soll), kHaben = kontoMap.get(b.haben);
+                if (!kSoll || !kHaben || !Number.isFinite(b.betrag)) {
+                    problemBuchungen.push(b);
+                    return;
+                }
+                if(kSoll.typ === "Aktiv" || kSoll.typ === "Aufwand") salden[b.soll] += b.betrag; else salden[b.soll] -= b.betrag;
+                if(kHaben.typ === "Aktiv" || kHaben.typ === "Aufwand") salden[b.haben] -= b.betrag; else salden[b.haben] += b.betrag;
             });
             
             let tAuf = 0, tErt = 0, tAkt = 0, tPas = 0;
-            const bAuf = document.getElementById('erAufwandBody'), bErt = document.getElementById('erErtragBody'), bAkt = document.getElementById('bilanzAktivenBody'), bPas = document.getElementById('bilanzPassivenBody');
-            bAuf.innerHTML = ''; bErt.innerHTML = ''; bAkt.innerHTML = ''; bPas.innerHTML = '';
-            
+            const zeilen = { Aufwand: [], Ertrag: [], Aktiv: [], Passiv: [] };
             kontenplan.forEach(k => {
                 if(salden[k.id] === 0) return;
-                const r = `<tr><td>${k.name}</td><td class="right chf">${formatCHF(salden[k.id])}</td></tr>`;
-                if(k.typ === "Aufwand") { bAuf.innerHTML += r; tAuf += salden[k.id]; }
-                if(k.typ === "Ertrag") { bErt.innerHTML += r; tErt += salden[k.id]; }
-                if(k.typ === "Aktiv") { bAkt.innerHTML += r; tAkt += salden[k.id]; }
-                if(k.typ === "Passiv") { bPas.innerHTML += r; tPas += salden[k.id]; }
+                zeilen[k.typ].push(`<tr><td>${k.name}</td><td class="right chf">${formatCHF(salden[k.id])}</td></tr>`);
+                if(k.typ === "Aufwand") tAuf += salden[k.id];
+                if(k.typ === "Ertrag") tErt += salden[k.id];
+                if(k.typ === "Aktiv") tAkt += salden[k.id];
+                if(k.typ === "Passiv") tPas += salden[k.id];
             });
+            document.getElementById('erAufwandBody').innerHTML = zeilen.Aufwand.join('');
+            document.getElementById('erErtragBody').innerHTML = zeilen.Ertrag.join('');
+            document.getElementById('bilanzAktivenBody').innerHTML = zeilen.Aktiv.join('');
+            document.getElementById('bilanzPassivenBody').innerHTML = zeilen.Passiv.join('');
             
             const gewinn = tErt - tAuf;
             const nettoEB = tEbAktiv - tEbPassiv;
+            const totalPassiven = tPas + gewinn + nettoEB;
 
             document.getElementById('totalAufwand').innerText = formatCHF(tAuf); 
             document.getElementById('totalErtrag').innerText = formatCHF(tErt);
@@ -1194,7 +1346,34 @@
             `;
             
             document.getElementById('totalAktiven').innerText = formatCHF(tAkt); 
-            document.getElementById('totalPassiven').innerText = formatCHF(tPas + gewinn + nettoEB);
+            document.getElementById('totalPassiven').innerText = formatCHF(totalPassiven);
+
+            // Kontrolle: Aktiven und Passiven muessen uebereinstimmen.
+            const differenz = tAkt - totalPassiven;
+            const kontrolle = document.getElementById('bilanzKontrolle');
+            if (differenz === 0) {
+                kontrolle.className = 'bilanz-kontrolle ok';
+                kontrolle.innerHTML = '<span>✓ Bilanz ausgeglichen: Total Aktiven = Total Passiven</span>';
+            } else {
+                kontrolle.className = 'bilanz-kontrolle fehler';
+                kontrolle.innerHTML = `<span>⚠️ Bilanz nicht ausgeglichen – Differenz Aktiven minus Passiven</span><span class="chf">CHF ${formatCHF(differenz)}</span>`;
+            }
+
+            zeigeProblemBuchungen(problemBuchungen);
+        }
+
+        function zeigeProblemBuchungen(liste) {
+            const ziele = [document.getElementById('erKontoWarnung'), document.getElementById('bilanzKontoWarnung')];
+            if (liste.length === 0) {
+                ziele.forEach(el => { el.style.display = 'none'; el.innerHTML = ''; });
+                return;
+            }
+            const beispiele = liste.slice(0, 5).map(b =>
+                `<li>${formatDatumCH(b.datum_eingabe)} · ${escapeHtml(b.text)} · Soll ${escapeHtml(b.soll)} / Haben ${escapeHtml(b.haben)}${Number.isFinite(b.betrag) ? '' : ' · ungültiger Betrag'}</li>`
+            ).join('');
+            const weitere = liste.length > 5 ? `<li>… und ${liste.length - 5} weitere</li>` : '';
+            const html = `⚠️ <strong>${liste.length} Buchung${liste.length === 1 ? '' : 'en'}</strong> mit unbekanntem Konto oder ungültigem Betrag ${liste.length === 1 ? 'ist' : 'sind'} in diesen Zahlen nicht enthalten. Bitte im Journal korrigieren:<ul style="margin: 6px 0 0 18px; padding: 0;">${beispiele}${weitere}</ul>`;
+            ziele.forEach(el => { el.style.display = 'block'; el.innerHTML = html; });
         }
     </script>
 </body>
