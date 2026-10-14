@@ -182,33 +182,14 @@
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-    import { getFirestore, collection, query, orderBy, limit, getDocs, doc, getDoc, setDoc, deleteDoc, where, Timestamp, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyC4TnJ2SHBPwaB2E_NS_SYE0jZM2yZTjTs",
-        authDomain: "buchhaltung-9c1c9.firebaseapp.com",
-        projectId: "buchhaltung-9c1c9",
-        storageBucket: "buchhaltung-9c1c9.firebasestorage.app",
-        messagingSenderId: "401277655088",
-        appId: "1:401277655088:web:0ed07c93e335524ffe35f5"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    enableIndexedDbPersistence(db).catch((err) => {
-        if (err.code === 'failed-precondition') {
-            console.warn('Mehrere Tabs offen. Offline-Cache funktioniert am besten in einem einzigen Tab.');
-        } else if (err.code === 'unimplemented') {
-            console.warn('Der aktuelle Browser unterstützt kein Caching.');
-        }
-    });
+    import { auth, onAuthStateChanged } from "./js/firebase.js";
+    import { db, collection, query, orderBy, limit, onSnapshot, doc, getDoc, setDoc, deleteDoc, where, Timestamp } from "./js/firestore.js";
 
     let currentFilter = "all";
-    let refreshIntervalId = null;
+    // Live-Verbindung statt Neuladen jede Minute: Firestore berechnet nach dem ersten
+    // Laden nur noch neue Log-Einträge (vorher bis zu 100 Lesevorgänge pro Minute).
+    let unsubscribeLogs = null;
+    const offeneZeilen = new Set();
 
     onAuthStateChanged(auth, (user) => {
         if (!user) window.location.href = "index.html";
@@ -221,24 +202,22 @@
                 document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 currentFilter = e.target.getAttribute('data-filter');
-                loadLogs();
+                abonniereLogs();
             };
         });
 
-        document.getElementById('dateVon').onchange = loadLogs;
-        document.getElementById('dateBis').onchange = loadLogs;
+        document.getElementById('dateVon').onchange = abonniereLogs;
+        document.getElementById('dateBis').onchange = abonniereLogs;
 
         window.resetDates = () => {
             document.getElementById('dateVon').value = '';
             document.getElementById('dateBis').value = '';
-            loadLogs();
+            abonniereLogs();
         };
 
-        window.refreshLogs = () => loadLogs();
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.refreshLogs = () => abonniereLogs();
 
-        loadLogs();
-        startAutoRefresh();
+        abonniereLogs();
     }
 
     function buildLogsQuery() {
@@ -263,43 +242,18 @@
         return query(collection(db, "audit_logs"), ...conditions);
     }
 
-    async function loadLogs() {
-        if (document.hidden) return;
+    function abonniereLogs() {
+        if (unsubscribeLogs) unsubscribeLogs();
         const tbody = document.getElementById('logBody');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px;">Lade Logs...</td></tr>';
-        try {
-            const snapshot = await getDocs(buildLogsQuery());
-            renderTable(snapshot);
-        } catch (error) {
+        unsubscribeLogs = onSnapshot(buildLogsQuery(), renderTable, (error) => {
             console.error("Firestore Error:", error);
             if (String(error.message || '').includes("index")) {
-                alert("Bitte erstelle den erforderlichen Index in der Firebase Console. Ein Link dazu sollte in der Browser-Konsole (F12) stehen.");
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color:#b42318;">Für diesen Filter fehlt ein Index in der Firebase Console. Der Link dazu steht in der Browser-Konsole (F12).</td></tr>';
             } else {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color:#b42318;">Fehler beim Laden der Logs.</td></tr>';
             }
-        }
-    }
-
-    function startAutoRefresh() {
-        if (refreshIntervalId) window.clearInterval(refreshIntervalId);
-        refreshIntervalId = window.setInterval(() => {
-            if (!document.hidden) loadLogs();
-        }, 60000);
-    }
-
-    function stopAutoRefresh() {
-        if (!refreshIntervalId) return;
-        window.clearInterval(refreshIntervalId);
-        refreshIntervalId = null;
-    }
-
-    function handleVisibilityChange() {
-        if (document.hidden) {
-            stopAutoRefresh();
-            return;
-        }
-        loadLogs();
-        startAutoRefresh();
+        });
     }
 
     // Hilfsfunktion: Formatiert Rappen in CHF
@@ -409,6 +363,12 @@
                 </td>
             `;
 
+            // Aufgeklappte Einträge bleiben offen, wenn neue Logs eintreffen.
+            if (offeneZeilen.has(id)) {
+                trMain.classList.add('open');
+                trDetails.classList.add('open');
+            }
+
             tbody.appendChild(trMain);
             tbody.appendChild(trDetails);
         });
@@ -418,8 +378,9 @@
         const detailRow = document.getElementById(`detail_${id}`);
         const mainRow = detailRow.previousElementSibling;
         
-        detailRow.classList.toggle('open');
-        mainRow.classList.toggle('open');
+        const offen = detailRow.classList.toggle('open');
+        mainRow.classList.toggle('open', offen);
+        if (offen) offeneZeilen.add(id); else offeneZeilen.delete(id);
     };
 
     function getShortCol(c) {
