@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Nur diese Konten dürfen überhaupt etwas. Ein fremdes Konto auf dem
+    // Projekt nützt niemandem mehr etwas, auch wenn es sich anlegen lässt.
+    function berechtigt() {
+      return request.auth != null
+          && request.auth.uid in [
+               'SUfUFLsAwRWOjVvH7mZZaZhVkL82',
+               '3pSUg80ZVbUZ9Rolzjxe0xbj2883'
+             ];
+    }
+
+    match /{document=**} {
+      allow read, write: if berechtigt();
+    }
+  }
+}

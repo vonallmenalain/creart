@@ -1,0 +1,16 @@
+{
+  "name": "creart-firebase",
+  "private": true,
+  "description": "Firestore-Regeln: Test gegen den Emulator und Deploy per GitHub Action",
+  "type": "module",
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore --project demo-creart \"node tests/rules.test.mjs\"",
+    "deploy:rules": "node scripts/deploy-rules.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "firebase": "12.19.0",
+    "firebase-admin": "14.4.0",
+    "firebase-tools": "15.33.0"
+  }
+}
