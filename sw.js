@@ -5,13 +5,13 @@
 // - Firebase- und Excel-Bibliothek: Adressen enthalten die Version und ändern sich nie,
 //   deshalb dauerhaft aus dem Cache.
 // - Datenbank- und Login-Anfragen werden nicht angefasst (Firestore hat einen eigenen Cache).
-const APP_CACHE = 'creart-app-v1';
+const APP_CACHE = 'creart-app-v2';
 const LIB_CACHE = 'creart-lib-v1';
 const NETZ_TIMEOUT_MS = 3500;
 const APP_DATEIEN = [
     './', 'index.html', 'eingabe.html', 'verwaltung.html', 'admin.html',
     'css/styles.css',
-    'js/firebase.js', 'js/firestore.js', 'js/utils.js', 'js/config.js', 'js/ui.js', 'js/daten.js', 'js/pwa.js',
+    'js/firebase.js', 'js/firestore.js', 'js/utils.js', 'js/config.js', 'js/ui.js', 'js/daten.js', 'js/nummern.js', 'js/pwa.js',
     'manifest.webmanifest',
     'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'
 ];

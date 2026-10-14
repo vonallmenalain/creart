@@ -5,7 +5,7 @@ import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebas
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 
 const BERECHTIGT = ['SUfUFLsAwRWOjVvH7mZZaZhVkL82', '3pSUg80ZVbUZ9Rolzjxe0xbj2883'];
-const COLLECTIONS = ['buchungen', 'eroeffnungsbilanz', 'kunden_adressen', 'debitoren', 'verkaeufe_events', 'ferienwohnung_buchungen', 'audit_logs'];
+const COLLECTIONS = ['buchungen', 'eroeffnungsbilanz', 'kunden_adressen', 'debitoren', 'verkaeufe_events', 'ferienwohnung_buchungen', 'audit_logs', 'zaehler'];
 
 const env = await initializeTestEnvironment({
   projectId: 'demo-creart',
