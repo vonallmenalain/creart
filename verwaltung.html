@@ -105,6 +105,10 @@
         .debitor-paid-row td { background: #f6fff7; }
         .debitor-reminder-row td { background: #fff8f0; }
         .export-selected td { background: #f0fdf4; }
+        .label-zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .link-knopf { background: none; border: none; padding: 0; color: var(--link); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; text-decoration: underline; }
+        .mahn-zelle { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; white-space: normal; }
+        .col-9 { grid-column: span 9; }
 
         /* Dialoge (Duplikate, Exporte) */
         .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px; backdrop-filter: blur(3px); }
@@ -394,7 +398,10 @@
                     <div class="small-note" id="debitorKundenStatus"></div>
                 </div>
                 <div class="form-grid">
-                    <div class="form-group col-3"><label>Nummer</label><input type="text" id="debitorNummer" placeholder="z.B. 2026-031"></div>
+                    <div class="form-group col-3">
+                        <label for="debitorNummer" class="label-zeile">Rechnungsnummer <button type="button" class="link-knopf" id="nummerVorschlag" onclick="uebernehmeNummerVorschlag()" hidden></button></label>
+                        <input type="text" id="debitorNummer" placeholder="z.B. 2026-031">
+                    </div>
                     <div class="form-group col-3">
                         <label>Online</label>
                         <div class="multi-select-wrap" id="debitorOnlineWrap">
@@ -419,11 +426,17 @@
                     <div class="form-group col-4"><label>Strasse</label><input type="text" id="debitorStrasse" placeholder="Strasse und Nr."></div>
                     <div class="form-group col-2"><label>PLZ</label><input type="text" id="debitorPlz" placeholder="3000"></div>
                     <div class="form-group col-4"><label>Ort</label><input type="text" id="debitorOrt" placeholder="Ort"></div>
-                    <div class="form-group col-3">
-                        <label>Bezahlt</label>
-                        <select id="debitorBezahlt"><option value="Nein">Nein</option><option value="Ja">Ja</option><option value="Ja Twint">Ja Twint</option><option value="Ja Retour">Ja Retour</option></select>
+                    <div class="form-group col-2">
+                        <label for="debitorBezahlt">Bezahlt</label>
+                        <select id="debitorBezahlt" onchange="bezahltGeaendert()"><option value="Nein">Nein</option><option value="Ja">Ja</option><option value="Ja Twint">Ja Twint</option><option value="Ja Retour">Ja Retour</option></select>
                     </div>
-                    <div class="form-group col-5"><label>Mahnung / Bemerkungen</label><input type="text" id="debitorMahnung" placeholder="z.B. 1. Mahnung gesendet"></div>
+                    <div class="form-group col-3"><label for="debitorBezahltAm">Bezahlt am</label><input type="date" id="debitorBezahltAm"></div>
+                    <div class="form-group col-3">
+                        <label for="debitorMahnstufe">Mahnstufe</label>
+                        <select id="debitorMahnstufe" onchange="mahnstufeGeaendert()"><option value="0">Keine</option><option value="1">1. Mahnung</option><option value="2">2. Mahnung</option><option value="3">3. Mahnung</option></select>
+                    </div>
+                    <div class="form-group col-3"><label for="debitorGemahntAm">Gemahnt am</label><input type="date" id="debitorGemahntAm"></div>
+                    <div class="form-group col-9"><label for="debitorMahnung">Bemerkungen</label><input type="text" id="debitorMahnung" placeholder="z.B. Kundin ruft zurück"></div>
                     <div class="form-group col-12"><label>Produkte</label><textarea id="debitorProdukte" placeholder="Freitext zur Bestellung / Produkte"></textarea></div>
                 </div>
                 <div class="event-form-actions sticky-actions">
@@ -440,7 +453,7 @@
                 <div class="filter-inline">
                     <div class="form-group">
                         <label for="debitorStatusFilter">Status</label>
-                        <select id="debitorStatusFilter"><option value="alle">Alle</option><option value="offen" selected>Offen</option><option value="bezahlt">Bezahlt</option><option value="gemahnt">Gemahnt</option></select>
+                        <select id="debitorStatusFilter"><option value="alle">Alle</option><option value="offen" selected>Offen</option><option value="bezahlt">Bezahlt</option><option value="gemahnt">Gemahnt (offen)</option></select>
                     </div>
                 </div>
             </div>
@@ -459,7 +472,7 @@
                             <th class="sortable-header" onclick="sortiereDebitoren('produkte')">Produkte <span id="sort_debitor_produkte" class="sort-icon"></span></th>
                             <th class="sortable-header right" onclick="sortiereDebitoren('betrag_rappen')">Betrag <span id="sort_debitor_betrag_rappen" class="sort-icon"></span></th>
                             <th class="sortable-header" onclick="sortiereDebitoren('bezahlt_status')">Bezahlt <span id="sort_debitor_bezahlt_status" class="sort-icon"></span></th>
-                            <th class="sortable-header" onclick="sortiereDebitoren('mahnung')">Mahnung / Bem. <span id="sort_debitor_mahnung" class="sort-icon"></span></th>
+                            <th class="sortable-header" onclick="sortiereDebitoren('mahnung')">Mahnung / Bemerkung <span id="sort_debitor_mahnung" class="sort-icon"></span></th>
                             <th class="center">Aktionen</th>
                         </tr>
                     </thead>
@@ -713,6 +726,7 @@
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
         import { db, collection, updateDoc, doc, serverTimestamp, onSnapshot, query, where } from "./js/firestore.js";
         import { anlegen, aendern, loeschen, stapel } from "./js/daten.js";
+        import { KUNDEN, debitorenFuer, anlegenMitNummer, nummerNachtragen } from "./js/nummern.js";
         import { escapeHtml, formatCHF, formatDatumCH, todayLocal, textVergleich, verzoegert, parseRappen } from "./js/utils.js";
         import { produkte, unterobjekte, initJahresAuswahl } from "./js/config.js";
         import { toast, bestaetigen } from "./js/ui.js";
@@ -1006,17 +1020,6 @@
             return match ? parseInt(match[1], 10) : fallback;
         }
 
-        function nextRunningCode(prefix, values, digits = 4) {
-            const maxValue = values.reduce((max, value) => Math.max(max, parseCodeNumber(value, 0)), 0);
-            return `${prefix}${String(maxValue + 1).padStart(digits, '0')}`;
-        }
-
-        function nextDebitorInternalId(year) {
-            const sameYear = debitorenDaten.map(d => d.debitor_id).filter(id => String(id || '').startsWith(`D-${year}-`));
-            const maxValue = sameYear.reduce((max, value) => Math.max(max, parseCodeNumber(value, 0)), 0);
-            return `D-${year}-${String(maxValue + 1).padStart(3, '0')}`;
-        }
-
         function getCustomerDisplayName(kunde) {
             return [kunde?.vorname, kunde?.nachname].filter(Boolean).join(' ').trim() || 'Ohne Namen';
         }
@@ -1089,6 +1092,8 @@
             document.getElementById('debitorSuche')?.addEventListener('input', verzoegert(renderDebitorListe));
             document.getElementById('debitorStatusFilter')?.addEventListener('change', renderDebitorListe);
             document.getElementById('debitorKundenSuche')?.addEventListener('input', verzoegert(renderDebitorKundenTreffer));
+            document.getElementById('debitorNummer')?.addEventListener('input', () => aktualisiereNummerVorschlag());
+            document.getElementById('debitorDatum')?.addEventListener('change', () => aktualisiereNummerVorschlag());
             document.addEventListener('click', (ev) => {
                 const wrap = document.getElementById('matrixFilterWrap');
                 const dropdown = document.getElementById('matrixFilterDropdown');
@@ -1472,11 +1477,8 @@
                     await aendern('kunden_adressen', bearbeitungsAdresseId, payload);
                     showToast('Adresse erfolgreich aktualisiert.', 'success');
                 } else {
-                    await anlegen('kunden_adressen', {
-                        ...payload,
-                        kundennummer: nextRunningCode('K', adressenDaten.map(a => a.kundennummer))
-                    });
-                    showToast('Adresse erfolgreich gespeichert.', 'success');
+                    const { nummer } = await anlegenMitNummer(KUNDEN, payload, adressenDaten);
+                    showToast(nummer ? `Kunde ${nummer} gespeichert.` : 'Kunde gespeichert – die Kundennummer wird vergeben, sobald wieder eine Verbindung besteht.', 'success');
                 }
                 resetAdressForm({ collapse: true });
             } catch (error) {
@@ -1601,29 +1603,39 @@
             }).join('');
         }
 
-        // Ergaenzt fehlende Kundennummern einmal pro Seitenaufruf im Hintergrund
-        // (nicht bei jedem Datenupdate und ohne das Zeichnen der Liste zu blockieren).
-        let kundenNummernGeprueft = false;
+        // Trägt fehlende Kundennummern im Hintergrund nach (z.B. für offline erfasste Kunden),
+        // jeweils per Transaktion über den Zähler. Verknüpfte Debitoren erhalten die Nummer ebenfalls.
+        let kundenNachtragLaeuft = false;
         async function ensureKundenNummern() {
-            if (kundenNummernGeprueft) return;
-            kundenNummernGeprueft = true;
             const ohneNummer = adressenDaten.filter(adresse => !adresse.kundennummer);
-            if (ohneNummer.length === 0) return;
-            let nextNumber = adressenDaten.reduce((max, adresse) => Math.max(max, parseCodeNumber(adresse.kundennummer, 0)), 0);
-            for (const adresse of ohneNummer) {
-                nextNumber += 1;
-                try { await updateDoc(doc(db, 'kunden_adressen', adresse.id), { kundennummer: `K${String(nextNumber).padStart(4, '0')}` }); } catch (error) { console.error(error); }
+            if (kundenNachtragLaeuft || ohneNummer.length === 0 || !navigator.onLine) return;
+            kundenNachtragLaeuft = true;
+            try {
+                for (const adresse of ohneNummer) {
+                    const nummer = await nummerNachtragen(KUNDEN, adresse.id, adressenDaten);
+                    if (!nummer) continue;
+                    const verknuepft = debitorenDaten.filter(d => d.kunde_id === adresse.id && !d.kunde_nummer);
+                    for (const debitor of verknuepft) await updateDoc(doc(db, 'debitoren', debitor.id), { kunde_nummer: nummer });
+                }
+            } catch (error) {
+                console.error('Kundennummern nachtragen:', error);
+            } finally {
+                kundenNachtragLaeuft = false;
             }
         }
 
         function ladeAdressen() {
             if (unsubscribeAdressen) unsubscribeAdressen();
             if (!adressenGeladen) document.getElementById('adressListeBody').innerHTML = '<tr><td colspan="7" class="center muted" style="padding: 20px;">Lade Adressen…</td></tr>';
-            unsubscribeAdressen = onSnapshot(collection(db, 'kunden_adressen'), (snap) => {
+            // includeMetadataChanges: meldet auch, wenn offline erfasste Kunden auf dem Server
+            // angekommen sind (nur Status-Änderung), damit fehlende Nummern nachgetragen werden.
+            unsubscribeAdressen = onSnapshot(collection(db, 'kunden_adressen'), { includeMetadataChanges: true }, (snap) => {
+                const nurStatus = adressenGeladen && snap.docChanges().length === 0;
+                if (!snap.metadata.fromCache && !snap.metadata.hasPendingWrites) ensureKundenNummern();
+                if (nurStatus) return;
                 adressenDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 adressenGeladen = true;
                 adressSuchtextCache.clear();
-                if (!snap.metadata.fromCache) ensureKundenNummern();
                 renderOderVormerken('adressen');
                 renderDebitorKundenTreffer();
                 updateDebitorKundenStatus();
@@ -1820,6 +1832,7 @@
             document.getElementById('debitorFormTitle').innerText = editing ? 'Debitor bearbeiten' : 'Debitor erfassen';
             document.getElementById('saveDebitorBtn').innerText = editing ? 'Änderungen speichern' : 'Debitor speichern';
             document.getElementById('cancelDebitorBtn').style.display = editing ? 'inline-flex' : 'none';
+            aktualisiereNummerVorschlag();
         }
 
         window.toggleDebitorForm = (arg) => {
@@ -1868,11 +1881,15 @@
             document.getElementById('debitorPlz').value = '';
             document.getElementById('debitorOrt').value = '';
             document.getElementById('debitorBezahlt').value = 'Nein';
+            document.getElementById('debitorBezahltAm').value = '';
+            document.getElementById('debitorMahnstufe').value = '0';
+            document.getElementById('debitorGemahntAm').value = '';
             document.getElementById('debitorMahnung').value = '';
             document.getElementById('debitorProdukte').value = '';
             document.getElementById('debitorKundenTreffer').innerHTML = '';
             setDebitorFormMode();
             updateDebitorKundenStatus();
+            aktualisiereNummerVorschlag();
             if (collapse) toggleDebitorForm(false);
         }
 
@@ -1891,6 +1908,9 @@
             document.getElementById('debitorPlz').value = debitor.plz || '';
             document.getElementById('debitorOrt').value = debitor.ort || '';
             document.getElementById('debitorBezahlt').value = debitor.bezahlt_status || 'Nein';
+            document.getElementById('debitorBezahltAm').value = debitor.bezahlt_am || '';
+            document.getElementById('debitorMahnstufe').value = String(getMahnstufe(debitor));
+            document.getElementById('debitorGemahntAm').value = debitor.gemahnt_am || '';
             document.getElementById('debitorMahnung').value = debitor.mahnung || '';
             document.getElementById('debitorProdukte').value = debitor.produkte || '';
 
@@ -1916,6 +1936,9 @@
             document.getElementById('debitorPlz').value = '';
             document.getElementById('debitorOrt').value = '';
             document.getElementById('debitorBezahlt').value = 'Nein';
+            document.getElementById('debitorBezahltAm').value = '';
+            document.getElementById('debitorMahnstufe').value = '0';
+            document.getElementById('debitorGemahntAm').value = '';
             document.getElementById('debitorMahnung').value = '';
             document.getElementById('debitorProdukte').value = '';
 
@@ -1975,13 +1998,63 @@
         async function ensureCustomerForDebitor(payload) {
             const matched = matchCustomerFromDebitorPayload(payload);
             if (matched) return { kunde_id: matched.id, kunde_nummer: matched.kundennummer || '', created_customer: false };
-            const kundennummer = nextRunningCode('K', adressenDaten.map(a => a.kundennummer));
-            const adressePayload = { kundennummer, vorname: payload.vorname, nachname: payload.nachname, strasse: payload.strasse, plz: payload.plz, ort: payload.ort, produkte: '' };
-            const kundeId = await anlegen('kunden_adressen', adressePayload);
-            return { kunde_id: kundeId, kunde_nummer: kundennummer, created_customer: true };
+            const adressePayload = { vorname: payload.vorname, nachname: payload.nachname, strasse: payload.strasse, plz: payload.plz, ort: payload.ort, produkte: '' };
+            const { id, nummer } = await anlegenMitNummer(KUNDEN, adressePayload, adressenDaten);
+            return { kunde_id: id, kunde_nummer: nummer, created_customer: true };
         }
 
         function isDebitorBezahlt(debitor) { return (debitor.bezahlt_status || 'Nein') !== 'Nein'; }
+
+        // Mahnstufe 0–3. Ältere Einträge haben nur den Text ("1. Mahnung gesendet"):
+        // daraus wird die Stufe abgeleitet, bis der Debitor neu gespeichert wird.
+        function getMahnstufe(debitor) {
+            if (Number.isInteger(debitor.mahnstufe)) return debitor.mahnstufe;
+            const text = String(debitor.mahnung || '');
+            const treffer = text.match(/([123])\.\s*mahnung/i);
+            if (treffer) return Number(treffer[1]);
+            return /mahnung/i.test(text) ? 1 : 0;
+        }
+
+        function istGemahntOffen(debitor) { return !isDebitorBezahlt(debitor) && getMahnstufe(debitor) > 0; }
+
+        window.bezahltGeaendert = () => {
+            const bezahlt = document.getElementById('debitorBezahlt').value !== 'Nein';
+            const feld = document.getElementById('debitorBezahltAm');
+            if (bezahlt && !feld.value) feld.value = todayLocal();
+            if (!bezahlt) feld.value = '';
+        };
+
+        window.mahnstufeGeaendert = () => {
+            const stufe = Number(document.getElementById('debitorMahnstufe').value);
+            const feld = document.getElementById('debitorGemahntAm');
+            if (stufe > 0 && !feld.value) feld.value = todayLocal();
+            if (stufe === 0) feld.value = '';
+        };
+
+        // Nächste freie Rechnungsnummer im Format JJJJ-NNN (nur als Vorschlag).
+        function rechnungsnummerVorschlag() {
+            const datum = document.getElementById('debitorDatum').value;
+            const jahr = (datum || document.getElementById('selectedYear').value).slice(0, 4);
+            const muster = new RegExp(`^${jahr}-(\\d+)$`);
+            const hoechste = debitorenDaten.reduce((max, d) => {
+                const treffer = String(d.nummer || '').trim().match(muster);
+                return treffer ? Math.max(max, parseInt(treffer[1], 10)) : max;
+            }, 0);
+            return `${jahr}-${String(hoechste + 1).padStart(3, '0')}`;
+        }
+
+        function aktualisiereNummerVorschlag() {
+            const knopf = document.getElementById('nummerVorschlag');
+            if (!knopf) return;
+            const leer = !document.getElementById('debitorNummer').value.trim();
+            knopf.hidden = !leer || !!bearbeitungsDebitorId;
+            knopf.textContent = `Vorschlag: ${rechnungsnummerVorschlag()}`;
+        }
+
+        window.uebernehmeNummerVorschlag = () => {
+            document.getElementById('debitorNummer').value = rechnungsnummerVorschlag();
+            aktualisiereNummerVorschlag();
+        };
 
         function getBezahltChipClass(status) {
             if (status === 'Ja Twint') return 'twint';
@@ -2006,13 +2079,26 @@
                 return showToast('Bitte mindestens ein Kernfeld erfassen (z.B. Nummer, Datum, Name oder Betrag).', 'warning');
             }
 
+            // Warnung, wenn die Rechnungsnummer schon bei einem anderen Debitor vorkommt
+            if (nummer) {
+                const doppelt = debitorenDaten.find(d => d.id !== bearbeitungsDebitorId && normText(d.nummer) === normText(nummer));
+                if (doppelt && !await bestaetigen({
+                    titel: 'Rechnungsnummer bereits vergeben',
+                    text: `Die Nummer ${nummer} gibt es schon bei ${getCustomerDisplayName(doppelt)} (${formatDatumCH(doppelt.rechnungsdatum)}, CHF ${formatCHF(doppelt.betrag_rappen)}).\n\nTrotzdem speichern?`,
+                    ok: 'Trotzdem speichern'
+                })) return;
+            }
+
+            const mahnstufe = Number(document.getElementById('debitorMahnstufe').value) || 0;
             const payload = {
-                debitor_id: document.getElementById('debitorInterneId').value || nextDebitorInternalId(document.getElementById('selectedYear').value),
                 nummer, online, rechnungsdatum,
                 vorname: document.getElementById('debitorVorname').value.trim(), nachname,
                 strasse: document.getElementById('debitorStrasse').value.trim(), plz: document.getElementById('debitorPlz').value.trim(), ort: document.getElementById('debitorOrt').value.trim(),
                 produkte: document.getElementById('debitorProdukte').value.trim(), betrag_rappen: betragRappen,
-                bezahlt_status: document.getElementById('debitorBezahlt').value, mahnung: document.getElementById('debitorMahnung').value.trim(), aktualisiert_am: serverTimestamp()
+                bezahlt_status: document.getElementById('debitorBezahlt').value,
+                bezahlt_am: document.getElementById('debitorBezahlt').value !== 'Nein' ? document.getElementById('debitorBezahltAm').value : '',
+                mahnstufe, gemahnt_am: mahnstufe > 0 ? document.getElementById('debitorGemahntAm').value : '',
+                mahnung: document.getElementById('debitorMahnung').value.trim(), aktualisiert_am: serverTimestamp()
             };
 
             try {
@@ -2022,8 +2108,12 @@
                     await aendern('debitoren', bearbeitungsDebitorId, finalPayload);
                     showToast('Debitor erfolgreich aktualisiert.', 'success');
                 } else {
-                    await anlegen('debitoren', finalPayload);
-                    showToast(customerLink.created_customer ? 'Debitor gespeichert und neuer Kunde automatisch angelegt.' : 'Debitor erfolgreich gespeichert.', 'success');
+                    // Interne ID pro Jahr des Rechnungsdatums, fortlaufend über den Zähler.
+                    const jahr = (rechnungsdatum || document.getElementById('selectedYear').value).slice(0, 4);
+                    const { nummer: debitorId } = await anlegenMitNummer(debitorenFuer(jahr), finalPayload, debitorenDaten);
+                    const teile = [debitorId ? `Debitor ${debitorId} gespeichert` : 'Debitor gespeichert (interne Nummer folgt, sobald wieder Verbindung besteht)'];
+                    if (customerLink.created_customer) teile.push('neuer Kunde automatisch angelegt');
+                    showToast(teile.join(' – ') + '.', 'success');
                 }
                 resetDebitorForm({ collapse: true, preserveDate: true });
             } catch (error) { console.error(error); showToast('Fehler beim Speichern des Debitors.', 'error'); }
@@ -2065,6 +2155,7 @@
         function getDebitorSortValue(debitor, spalte) {
             if (spalte === 'betrag_rappen') return Number(debitor.betrag_rappen || 0);
             if (spalte === 'online') return normText(formatDebitorOnline(debitor));
+            if (spalte === 'mahnung') return getMahnstufe(debitor);
             return normText(debitor[spalte]);
         }
 
@@ -2077,7 +2168,7 @@
             if (suchbegriff) { daten = daten.filter(debitor => normText(`${debitor.nummer || ''} ${formatDebitorOnline(debitor)} ${debitor.vorname || ''} ${debitor.nachname || ''} ${debitor.ort || ''} ${debitor.produkte || ''} ${debitor.mahnung || ''}`).includes(suchbegriff)); }
             if (statusFilter === 'offen') daten = daten.filter(debitor => !isDebitorBezahlt(debitor));
             if (statusFilter === 'bezahlt') daten = daten.filter(debitor => isDebitorBezahlt(debitor));
-            if (statusFilter === 'gemahnt') daten = daten.filter(debitor => !!debitor.mahnung);
+            if (statusFilter === 'gemahnt') daten = daten.filter(istGemahntOffen);
 
             daten.sort((a, b) => {
                 if (debitorSortierung.spalte === 'nummer') {
@@ -2093,7 +2184,8 @@
                 return textVergleich(a.nachname || '', b.nachname || '');
             });
 
-            document.getElementById('debitorCountBadge').innerText = `${daten.length} ${daten.length === 1 ? 'Eintrag' : 'Einträge'}`;
+            const offenSumme = daten.filter(d => !isDebitorBezahlt(d)).reduce((summe, d) => summe + Number(d.betrag_rappen || 0), 0);
+            document.getElementById('debitorCountBadge').innerText = `${daten.length} ${daten.length === 1 ? 'Eintrag' : 'Einträge'}${offenSumme ? ` · offen CHF ${formatCHF(offenSumme)}` : ''}`;
             updateDebitorSortIcons();
 
             if (daten.length === 0) { tbody.innerHTML = '<tr><td colspan="13" class="center muted" style="padding: 20px;">Keine Debitoren gefunden.</td></tr>'; return; }
@@ -2101,7 +2193,9 @@
             tbody.innerHTML = daten.map(debitor => {
                 const bezahltStatus = debitor.bezahlt_status || 'Nein';
                 const onlineText = formatDebitorOnline(debitor);
-                const rowClass = isDebitorBezahlt(debitor) ? 'debitor-paid-row' : (debitor.mahnung ? 'debitor-reminder-row' : '');
+                const rowClass = isDebitorBezahlt(debitor) ? 'debitor-paid-row' : (istGemahntOffen(debitor) ? 'debitor-reminder-row' : '');
+                const mahnstufe = getMahnstufe(debitor);
+                const mahnChip = mahnstufe > 0 ? `<span class="status-chip neu">${mahnstufe}. Mahnung${debitor.gemahnt_am ? ` · ${formatDatumCH(debitor.gemahnt_am)}` : ''}</span>` : '';
                 return `
                     <tr class="${rowClass}">
                         <td class="d-nummer">${escapeHtml(debitor.nummer || '')}</td>
@@ -2115,7 +2209,7 @@
                         <td class="td-truncate mw-150 d-produkte" title="${escapeHtml(debitor.produkte || '')}">${escapeHtml(debitor.produkte || '').replace(/\n/g, ' / ')}</td>
                         <td class="right chf d-betrag">${formatCHF(debitor.betrag_rappen || 0)}</td>
                         <td class="d-bezahlt"><span class="status-chip ${getBezahltChipClass(bezahltStatus)}">${escapeHtml(bezahltStatus)}</span></td>
-                        <td class="td-truncate mw-120 d-mahnung" title="${escapeHtml(debitor.mahnung || '')}">${escapeHtml(debitor.mahnung || '')}</td>
+                        <td class="d-mahnung" title="${escapeHtml(debitor.mahnung || '')}"><div class="mahn-zelle">${mahnChip}${debitor.mahnung ? `<span class="td-truncate mw-150">${escapeHtml(debitor.mahnung)}</span>` : ''}</div></td>
                         <td class="center d-aktion">
                             <div class="row-actions">
                                 <button class="btn-icon" title="Bearbeiten" onclick="bearbeiteDebitor('${debitor.id}')">✏️</button>
@@ -2127,33 +2221,37 @@
             }).join('');
         }
 
-        // Wie bei den Kundennummern: einmal pro Seitenaufruf im Hintergrund.
-        let debitorIdsGeprueft = false;
+        // Trägt fehlende interne Debitor-IDs nach (z.B. offline erfasst), pro Jahr des
+        // Rechnungsdatums und per Transaktion über den Zähler.
+        let debitorNachtragLaeuft = false;
         async function ensureDebitorIds() {
-            if (debitorIdsGeprueft) return;
-            debitorIdsGeprueft = true;
             const ohneId = debitorenDaten.filter(debitor => !debitor.debitor_id);
-            if (ohneId.length === 0) return;
-            const maxByYear = {};
-            debitorenDaten.forEach(debitor => {
-                const datum = debitor.rechnungsdatum || `${document.getElementById('selectedYear').value}-01-01`;
-                const year = String(datum).slice(0, 4) || document.getElementById('selectedYear').value;
-                maxByYear[year] = Math.max(maxByYear[year] || 0, parseCodeNumber(debitor.debitor_id, 0));
-            });
-            for (const debitor of ohneId) {
-                const year = String(debitor.rechnungsdatum || `${document.getElementById('selectedYear').value}-01-01`).slice(0, 4);
-                maxByYear[year] = (maxByYear[year] || 0) + 1;
-                try { await updateDoc(doc(db, 'debitoren', debitor.id), { debitor_id: `D-${year}-${String(maxByYear[year]).padStart(3, '0')}` }); } catch (error) { console.error(error); }
+            if (debitorNachtragLaeuft || ohneId.length === 0 || !navigator.onLine) return;
+            debitorNachtragLaeuft = true;
+            try {
+                for (const debitor of ohneId) {
+                    const jahr = (debitor.rechnungsdatum || document.getElementById('selectedYear').value).slice(0, 4);
+                    await nummerNachtragen(debitorenFuer(jahr), debitor.id, debitorenDaten);
+                }
+            } catch (error) {
+                console.error('Debitor-IDs nachtragen:', error);
+            } finally {
+                debitorNachtragLaeuft = false;
             }
         }
 
         function ladeDebitoren() {
             if (unsubscribeDebitoren) unsubscribeDebitoren();
             if (debitorenDaten.length === 0) document.getElementById('debitorListeBody').innerHTML = '<tr><td colspan="13" class="center muted" style="padding: 20px;">Lade Debitoren…</td></tr>';
-            unsubscribeDebitoren = onSnapshot(collection(db, 'debitoren'), (snap) => {
+            let debitorenGeladen = false;
+            unsubscribeDebitoren = onSnapshot(collection(db, 'debitoren'), { includeMetadataChanges: true }, (snap) => {
+                const nurStatus = debitorenGeladen && snap.docChanges().length === 0;
+                if (!snap.metadata.fromCache && !snap.metadata.hasPendingWrites) { ensureDebitorIds(); ensureKundenNummern(); }
+                if (nurStatus) return;
+                debitorenGeladen = true;
                 debitorenDaten = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 baueHistoryIndex();
-                if (!snap.metadata.fromCache) ensureDebitorIds();
+                aktualisiereNummerVorschlag();
                 renderOderVormerken('debitoren');
                 renderOderVormerken('adressen');
             }, (error) => {
