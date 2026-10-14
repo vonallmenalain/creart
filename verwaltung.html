@@ -6,6 +6,15 @@
     <title>Verwaltung - CreArt & Ferienwohnung</title>
 
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CreArt">
+    <script type="module" src="js/pwa.js"></script>
     <style>
         /* Nur Regeln für die Verwaltung; Grundlagen in css/styles.css */
 
@@ -702,7 +711,8 @@
 
     <script type="module">
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
-        import { db, collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, where } from "./js/firestore.js";
+        import { db, collection, updateDoc, doc, serverTimestamp, onSnapshot, query, where } from "./js/firestore.js";
+        import { anlegen, aendern, loeschen, stapel } from "./js/daten.js";
         import { escapeHtml, formatCHF, formatDatumCH, todayLocal, textVergleich, verzoegert, parseRappen } from "./js/utils.js";
         import { produkte, unterobjekte, initJahresAuswahl } from "./js/config.js";
         import { toast, bestaetigen } from "./js/ui.js";
@@ -1275,7 +1285,7 @@
             if (!event) return;
             if (!await bestaetigen({ titel: 'Verkauf löschen?', text: `"${event.event_name}" vom ${formatDatumCH(event.datum)} wird gelöscht.`, ok: 'Löschen', gefahr: true })) return;
             try {
-                await deleteDoc(doc(db, 'verkaeufe_events', eventId));
+                await loeschen('verkaeufe_events', eventId);
                 if (bearbeitungsEventId === eventId) resetEventForm({ collapse: true });
                 showToast('Verkauf gelöscht.', 'success');
             } catch (error) {
@@ -1308,10 +1318,10 @@
             const payload = { typ, datum, event_name: eventName, ort: typ === 'markt' ? ort : '', produkte: eventProdukte };
             try {
                 if (bearbeitungsEventId) {
-                    await updateDoc(doc(db, 'verkaeufe_events', bearbeitungsEventId), payload);
+                    await aendern('verkaeufe_events', bearbeitungsEventId, payload);
                     showToast('Event erfolgreich aktualisiert.', 'success');
                 } else {
-                    await addDoc(collection(db, 'verkaeufe_events'), { ...payload, erstellt_am: serverTimestamp() });
+                    await anlegen('verkaeufe_events', payload);
                     showToast('Event erfolgreich gespeichert.', 'success');
                 }
                 resetEventForm({ collapse: true, preserveDate: true });
@@ -1459,13 +1469,12 @@
 
             try {
                 if (bearbeitungsAdresseId) {
-                    await updateDoc(doc(db, 'kunden_adressen', bearbeitungsAdresseId), payload);
+                    await aendern('kunden_adressen', bearbeitungsAdresseId, payload);
                     showToast('Adresse erfolgreich aktualisiert.', 'success');
                 } else {
-                    await addDoc(collection(db, 'kunden_adressen'), {
+                    await anlegen('kunden_adressen', {
                         ...payload,
-                        kundennummer: nextRunningCode('K', adressenDaten.map(a => a.kundennummer)),
-                        erstellt_am: serverTimestamp()
+                        kundennummer: nextRunningCode('K', adressenDaten.map(a => a.kundennummer))
                     });
                     showToast('Adresse erfolgreich gespeichert.', 'success');
                 }
@@ -1522,7 +1531,7 @@
             const warnung = linkedDebitoren > 0 ? `\n\nHinweis: Es sind ${linkedDebitoren} Debitor(en) mit diesem Kunden verknüpft.` : '';
             if (!await bestaetigen({ titel: 'Kunde löschen?', text: `"${label}" wird gelöscht.${warnung}`, ok: 'Löschen', gefahr: true })) return;
             try {
-                await deleteDoc(doc(db, 'kunden_adressen', adressId));
+                await loeschen('kunden_adressen', adressId);
                 if (bearbeitungsAdresseId === adressId) resetAdressForm({ collapse: true });
                 showToast('Kunde gelöscht.', 'success');
             } catch (error) {
@@ -1967,9 +1976,9 @@
             const matched = matchCustomerFromDebitorPayload(payload);
             if (matched) return { kunde_id: matched.id, kunde_nummer: matched.kundennummer || '', created_customer: false };
             const kundennummer = nextRunningCode('K', adressenDaten.map(a => a.kundennummer));
-            const adressePayload = { kundennummer, vorname: payload.vorname, nachname: payload.nachname, strasse: payload.strasse, plz: payload.plz, ort: payload.ort, produkte: '', erstellt_am: serverTimestamp() };
-            const ref = await addDoc(collection(db, 'kunden_adressen'), adressePayload);
-            return { kunde_id: ref.id, kunde_nummer: kundennummer, created_customer: true };
+            const adressePayload = { kundennummer, vorname: payload.vorname, nachname: payload.nachname, strasse: payload.strasse, plz: payload.plz, ort: payload.ort, produkte: '' };
+            const kundeId = await anlegen('kunden_adressen', adressePayload);
+            return { kunde_id: kundeId, kunde_nummer: kundennummer, created_customer: true };
         }
 
         function isDebitorBezahlt(debitor) { return (debitor.bezahlt_status || 'Nein') !== 'Nein'; }
@@ -2010,10 +2019,10 @@
                 const customerLink = await ensureCustomerForDebitor(payload);
                 const finalPayload = { ...payload, ...customerLink };
                 if (bearbeitungsDebitorId) {
-                    await updateDoc(doc(db, 'debitoren', bearbeitungsDebitorId), finalPayload);
+                    await aendern('debitoren', bearbeitungsDebitorId, finalPayload);
                     showToast('Debitor erfolgreich aktualisiert.', 'success');
                 } else {
-                    await addDoc(collection(db, 'debitoren'), { ...finalPayload, erstellt_am: serverTimestamp() });
+                    await anlegen('debitoren', finalPayload);
                     showToast(customerLink.created_customer ? 'Debitor gespeichert und neuer Kunde automatisch angelegt.' : 'Debitor erfolgreich gespeichert.', 'success');
                 }
                 resetDebitorForm({ collapse: true, preserveDate: true });
@@ -2035,7 +2044,7 @@
             if (!debitor) return;
             if (!await bestaetigen({ titel: 'Debitor löschen?', text: `Debitor ${debitor.nummer || debitor.debitor_id || debitorId} (${getCustomerDisplayName(debitor)}) wird gelöscht.`, ok: 'Löschen', gefahr: true })) return;
             try {
-                await deleteDoc(doc(db, 'debitoren', debitorId));
+                await loeschen('debitoren', debitorId);
                 if (bearbeitungsDebitorId === debitorId) resetDebitorForm({ collapse: true });
                 showToast('Debitor gelöscht.', 'success');
             } catch (error) { showToast('Fehler beim Löschen des Debitors.', 'error'); }
@@ -2514,15 +2523,14 @@
             setDuplicateButtonsDisabled(true);
 
             try {
-                await updateDoc(doc(db, 'kunden_adressen', keeper.id), payload);
-
+                // Alles in einem Schritt: Hauptkunde anpassen, Debitoren umhängen, Duplikate löschen.
+                // Entweder gelingt alles oder nichts (keine halb zusammengeführten Kunden).
                 const linkedDebitoren = debitorenDaten.filter(debitor => removeIds.includes(debitor.kunde_id));
-                await Promise.all(linkedDebitoren.map(debitor => updateDoc(doc(db, 'debitoren', debitor.id), {
-                    kunde_id: keeper.id,
-                    kunde_nummer: keeper.kundennummer || ''
-                })));
-
-                await Promise.all(removeIds.map(id => deleteDoc(doc(db, 'kunden_adressen', id))));
+                await stapel([
+                    { art: 'aendern', sammlung: 'kunden_adressen', id: keeper.id, daten: payload },
+                    ...linkedDebitoren.map(debitor => ({ art: 'aendern', sammlung: 'debitoren', id: debitor.id, daten: { kunde_id: keeper.id, kunde_nummer: keeper.kundennummer || '' } })),
+                    ...removeIds.map(id => ({ art: 'loeschen', sammlung: 'kunden_adressen', id }))
+                ]);
 
                 adressenDaten = adressenDaten
                     .filter(adresse => !removeIds.includes(adresse.id))
@@ -2665,10 +2673,10 @@
 
             try {
                 if (bearbeitungsFwId) {
-                    await updateDoc(doc(db, 'ferienwohnung_buchungen', bearbeitungsFwId), payload);
+                    await aendern('ferienwohnung_buchungen', bearbeitungsFwId, payload);
                     showToast('Buchung erfolgreich aktualisiert.', 'success');
                 } else {
-                    await addDoc(collection(db, 'ferienwohnung_buchungen'), { ...payload, erstellt_am: serverTimestamp() });
+                    await anlegen('ferienwohnung_buchungen', payload);
                     showToast('Neue Buchung erfolgreich gespeichert.', 'success');
                 }
                 resetFwForm({ collapse: true });
@@ -2691,7 +2699,7 @@
             const buchung = ferienwohnungDaten.find(b => b.id === id);
             if (!await bestaetigen({ titel: 'Buchung löschen?', text: buchung ? `${buchung.name} · ${formatDatumCH(buchung.datum_von)} – ${formatDatumCH(buchung.datum_bis)}` : 'Diese Buchung wird gelöscht.', ok: 'Löschen', gefahr: true })) return;
             try {
-                await deleteDoc(doc(db, 'ferienwohnung_buchungen', id));
+                await loeschen('ferienwohnung_buchungen', id);
                 if (bearbeitungsFwId === id) resetFwForm({ collapse: true });
                 showToast('Buchung gelöscht.', 'success');
             } catch (error) { showToast('Fehler beim Löschen der Buchung.', 'error'); }

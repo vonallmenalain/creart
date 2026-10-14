@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CreArt & Ferienwohnung Buchhaltung</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CreArt">
+    <script type="module" src="js/pwa.js"></script>
     <style>
         /* Nur Regeln für die Buchhaltung; Grundlagen in css/styles.css */
 
@@ -404,7 +413,8 @@
 
     <script type="module">
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
-        import { db, collection, addDoc, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, onSnapshot, query, orderBy, where } from "./js/firestore.js";
+        import { db, collection, onSnapshot, query, orderBy, where } from "./js/firestore.js";
+        import { anlegen, aendern, setzen, loeschen } from "./js/daten.js";
         import { escapeHtml, formatCHF, formatDatumCH, todayLocal, parseRappen } from "./js/utils.js";
         import { objekte, unterobjekte, kontenplan, ERSTES_JAHR, initJahresAuswahl } from "./js/config.js";
         import { toast, bestaetigen } from "./js/ui.js";
@@ -730,7 +740,7 @@
             if (bisher ? bisher.betrag === rappen : rappen === 0) return;
 
             try {
-                await setDoc(doc(db, "eroeffnungsbilanz", key), { year, accountId, objekt, betrag: rappen });
+                await setzen("eroeffnungsbilanz", key, { year, accountId, objekt, betrag: rappen });
             } catch (error) {
                 console.error(error);
                 input.classList.add('fehler');
@@ -840,11 +850,11 @@
 
             try {
                 if(bearbeitungsModusId) {
-                    await updateDoc(doc(db, "buchungen", bearbeitungsModusId), data);
+                    await aendern("buchungen", bearbeitungsModusId, data);
                     zeigeSaveFeedback('✅ Buchung wurde erfolgreich aktualisiert.');
                     toast('Buchung aktualisiert.', 'success');
                 } else {
-                    await addDoc(collection(db, "buchungen"), { ...data, erstellt_am: serverTimestamp() });
+                    await anlegen("buchungen", data);
                     zeigeSaveFeedback('✅ Buchung wurde erfolgreich gespeichert.');
                     toast('Buchung gespeichert.', 'success');
                 }
@@ -910,7 +920,7 @@
             });
             if(!ok) return;
             try {
-                await deleteDoc(doc(db, "buchungen", id));
+                await loeschen("buchungen", id);
                 if (bearbeitungsModusId === id) resetForm();
                 toast('Buchung gelöscht.', 'success');
             } catch (error) {
