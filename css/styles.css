@@ -192,17 +192,82 @@ th.center, td.center { text-align: center; }
 .ui-dialog-body p { margin: 0; line-height: 1.5; white-space: pre-line; color: var(--secondary); }
 .ui-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 18px 22px 22px; }
 
-/* ---------- Handy: gemeinsame Grundregeln ---------- */
+/* ---------- Tabs: Kurzform und Symbol (nur auf dem Handy sichtbar) ---------- */
+.tab-icon, .tab-kurz { display: none; }
+
+/* ---------- Auf dem Handy einklappbare Bereiche (z.B. Filter) ---------- */
+.filter-toggle { display: none; }
+
+/* ---------- Tablet: Formulare zweispaltig statt jedes Feld in voller Breite ---------- */
+@media (max-width: 1100px) and (min-width: 769px) {
+    .form-grid { grid-template-columns: repeat(6, 1fr); }
+    .form-grid .col-2, .form-grid .col-3 { grid-column: span 3; }
+    .form-grid .col-4, .form-grid .col-5, .form-grid .col-6, .form-grid .col-7, .form-grid .col-8, .form-grid .col-12 { grid-column: span 6; }
+}
+
+/* ---------- Handy ---------- */
 @media (max-width: 768px) {
-    body { padding: 12px; }
+    :root { --tabbar-h: 64px; }
+    body { padding: 12px 12px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom)); }
     .card { padding: 16px; }
-    .app-header { flex-direction: column; align-items: stretch; gap: 12px; }
-    .app-header-actions { justify-content: space-between; }
+    .app-header { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 14px; }
+    .app-title { font-size: 1.4rem; }
+    .app-header-actions { justify-content: space-between; flex-wrap: nowrap; }
     .app-nav { flex: 1; }
-    .app-nav-link { flex: 1; justify-content: center; padding: 0 8px; }
-    .nav-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; border-bottom: none; padding-bottom: 4px; gap: 8px; }
-    .tab-btn { white-space: nowrap; flex-shrink: 0; border-radius: var(--radius); border: 1px solid #dde3ea; }
-    .tab-btn.active { border: 1px solid var(--primary); box-shadow: none; margin-bottom: 0; }
+    .app-nav-link { flex: 1; justify-content: center; padding: 0 6px; }
+    .app-header-actions .btn-ghost { padding: 0 10px; }
+
+    /* Seiten-Tabs als Leiste am unteren Rand (mit dem Daumen erreichbar) */
+    .nav-tabs {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; margin: 0;
+        display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, 0.97); border-top: 1px solid var(--border);
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06); backdrop-filter: blur(8px);
+    }
+    .tab-btn {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+        min-height: 52px; padding: 4px 2px; border: none; border-radius: var(--radius);
+        background: transparent; color: var(--text-muted); font-size: 0.72rem; white-space: nowrap;
+    }
+    .tab-btn:hover:not(.active) { background: transparent; }
+    .tab-btn.active { background: var(--surface-info); color: var(--primary); border: none; box-shadow: none; margin: 0; }
+    .tab-icon { display: block; font-size: 1.25rem; line-height: 1; }
+    .tab-lang { display: none; }
+    .tab-kurz { display: block; }
+
     .form-grid { display: flex; flex-direction: column; gap: 14px; }
     .btn-main { width: 100%; }
+    .btn-icon, .action-btn { width: 42px; height: 42px; }
+    .toast-container { left: 12px; right: 12px; bottom: calc(var(--tabbar-h) + 18px + env(safe-area-inset-bottom)); max-width: none; }
+
+    /* Einklappbare Filter: zeigt nur den Knopf "Filter (n aktiv)" */
+    .filter-toggle { display: flex; width: 100%; justify-content: space-between; }
+    .mobil-klappbar:not(.offen) .klapp-inhalt { display: none !important; }
+    .filter-toggle .pfeil { transition: transform 0.15s; }
+    .mobil-klappbar.offen .filter-toggle .pfeil { transform: rotate(180deg); }
+
+    /* Speichern-Knöpfe langer Formulare bleiben unten sichtbar */
+    .sticky-actions {
+        position: sticky; bottom: calc(var(--tabbar-h) + 8px + env(safe-area-inset-bottom)); z-index: 5;
+        background: #fff; padding: 10px 0; box-shadow: 0 -10px 12px -10px rgba(0, 0, 0, 0.18);
+    }
+
+    /* Tabellen als Karten: jede Zeile wird eine Karte, die Spalten-Anordnung
+       legt die jeweilige Seite über grid-template-areas fest. */
+    .karten-tabelle thead { display: none; }
+    .karten-tabelle, .karten-tabelle tbody { display: block; width: 100%; }
+    .karten-tabelle tr {
+        display: grid; gap: 4px 12px; align-items: center; padding: 12px 14px; margin-bottom: 10px;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: var(--radius); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .karten-tabelle td { display: block; padding: 0; border: none; white-space: normal; min-width: 0; max-width: none !important; width: auto !important; background: transparent !important; }
+    .karten-tabelle td:empty { display: none; }
+    .karten-tabelle td[data-label]::before { content: attr(data-label) " "; color: var(--text-muted); font-size: var(--fs-xs); font-weight: 600; }
+    .karten-tabelle tr.details-row { display: block; margin-top: -6px; }
+    .karten-tabelle tr.details-row td { display: block; }
+    .karten-tabelle .td-truncate { overflow: visible; white-space: normal; }
+    .karten-tabelle .row-actions, .karten-tabelle .aktionen { justify-content: flex-end; }
+    .karten-tabelle td[colspan] { text-align: center; }
+    .table-container:has(> .karten-tabelle) { overflow: visible; }
 }

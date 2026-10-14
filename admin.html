@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Master Admin-Tool | Audit Log</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
@@ -48,8 +48,17 @@
         .act-delete { background: #f8d7da; color: #721c24; }
 
         @media (max-width: 768px) {
-            .filter-row { flex-direction: column; align-items: stretch; gap: 8px; }
-            .filter-row .filter-btn { width: 100%; }
+            .log-tabelle tr.main-row { grid-template-columns: auto auto 1fr; grid-template-areas: "zeit zeit undo" "bereich aktion aktion" "info info info"; }
+            .log-tabelle .l-zeit { grid-area: zeit; font-weight: 600; color: var(--secondary); }
+            .log-tabelle .l-undo { grid-area: undo; }
+            .log-tabelle .l-bereich { grid-area: bereich; }
+            .log-tabelle .l-aktion { grid-area: aktion; }
+            .log-tabelle .l-info { grid-area: info; }
+            .log-tabelle tr.details-row { display: none; }
+            .log-tabelle tr.details-row.open { display: block; }
+            .filter-row { gap: 8px; }
+            .filter-label { width: 100%; min-width: 0; }
+            .filter-row .date-input { flex: 1; min-width: 0; }
             .diff-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -91,7 +100,7 @@
 
     <div class="card">
         <div class="table-container">
-        <table>
+        <table class="karten-tabelle log-tabelle">
             <thead>
                 <tr>
                     <th style="width: 160px;">Datum / Zeit</th>
@@ -249,11 +258,11 @@
             trMain.className = 'main-row';
             trMain.onclick = () => window.toggleRow(id);
             trMain.innerHTML = `
-                <td>${time}</td>
-                <td><span class="badge col-${getShortCol(log.collection)}">${colLabel}</span></td>
-                <td><span class="badge act-${log.action.toLowerCase()}">${log.action}</span></td>
-                <td style="font-size:0.95em;">${shortInfo}</td>
-                <td class="right"><span class="zeilen-aktionen">
+                <td class="l-zeit">${time}</td>
+                <td class="l-bereich"><span class="badge col-${getShortCol(log.collection)}">${escapeHtml(colLabel)}</span></td>
+                <td class="l-aktion"><span class="badge act-${escapeHtml(String(log.action).toLowerCase())}">${escapeHtml(log.action)}</span></td>
+                <td class="l-info">${shortInfo}</td>
+                <td class="right l-undo"><span class="zeilen-aktionen">
                     <button class="btn-small" onclick="window.doUndo(event, '${id}')" title="Diese Änderung rückgängig machen">↩️ Undo</button>
                     <span class="toggle-icon" aria-hidden="true">▾</span>
                 </span></td>

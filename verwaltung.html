@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Verwaltung - CreArt & Ferienwohnung</title>
 
     <link rel="stylesheet" href="css/styles.css">
@@ -163,17 +163,57 @@
             .col-2, .col-3 { grid-column: span 3; }
             .col-4, .col-5, .col-6, .col-8, .col-12 { grid-column: span 6; }
             .card-toggle-header, .table-card-header, .search-toolbar, .debitor-toolbar { flex-direction: column; align-items: stretch; }
+            .search-input-wrap { flex: none; width: 100%; }
             .row-actions { justify-content: flex-start; }
             .entry-type-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 768px) {
+            /* Verkäufe: Datum + Umsatz, Name, Bemerkung, Stück + Aktionen */
+            .verkauf-tabelle tr { grid-template-columns: 1fr auto; grid-template-areas: "datum betrag" "name name" "ort ort" "anzahl aktion"; }
+            .verkauf-tabelle .v-datum { grid-area: datum; color: var(--secondary); font-weight: 600; }
+            .verkauf-tabelle .v-betrag { grid-area: betrag; font-weight: 700; }
+            .verkauf-tabelle .v-name { grid-area: name; font-weight: 600; }
+            .verkauf-tabelle .v-ort { grid-area: ort; font-size: var(--fs-sm); color: var(--text-muted); }
+            .verkauf-tabelle .v-anzahl { grid-area: anzahl; text-align: left; font-size: var(--fs-sm); }
+            .verkauf-tabelle .v-aktion { grid-area: aktion; }
+            /* Adressen: Name + Aktionen, Adresse, Info */
+            .adress-tabelle tr { grid-template-columns: auto auto 1fr; grid-template-areas: "vorname nachname aktion" "strasse strasse strasse" "plz ort ort" "produkte produkte produkte"; }
+            .adress-tabelle .a-vorname { grid-area: vorname; font-weight: 600; }
+            .adress-tabelle .a-nachname { grid-area: nachname; font-weight: 600; }
+            .adress-tabelle .a-aktion { grid-area: aktion; justify-self: end; }
+            .adress-tabelle .a-strasse { grid-area: strasse; }
+            .adress-tabelle .a-plz { grid-area: plz; }
+            .adress-tabelle .a-ort { grid-area: ort; }
+            .adress-tabelle .a-produkte { grid-area: produkte; min-width: 0; font-size: var(--fs-sm); }
+            /* Debitoren: Nummer + Betrag, Name + Status, Ort + Datum, Produkte, Mahnung, Aktionen */
+            .debitor-tabelle tr { grid-template-columns: auto 1fr auto; grid-template-areas: "nummer nummer betrag" "vorname name bezahlt" "ort ort datum" "produkte produkte produkte" "mahnung mahnung mahnung" "online online aktion"; }
+            .debitor-tabelle .d-nummer { grid-area: nummer; font-weight: 600; color: var(--secondary); }
+            .debitor-tabelle .d-betrag { grid-area: betrag; font-weight: 700; }
+            .debitor-tabelle .d-vorname { grid-area: vorname; font-weight: 600; }
+            .debitor-tabelle .d-name { grid-area: name; font-weight: 600; }
+            .debitor-tabelle .d-bezahlt { grid-area: bezahlt; justify-self: end; }
+            .debitor-tabelle .d-ort { grid-area: ort; }
+            .debitor-tabelle .d-datum { grid-area: datum; font-size: var(--fs-sm); color: var(--text-muted); }
+            .debitor-tabelle .d-produkte { grid-area: produkte; font-size: var(--fs-sm); }
+            .debitor-tabelle .d-mahnung { grid-area: mahnung; font-size: var(--fs-sm); color: var(--warning); }
+            .debitor-tabelle .d-online { grid-area: online; font-size: var(--fs-xs); color: var(--text-muted); }
+            .debitor-tabelle .d-aktion { grid-area: aktion; }
+            .debitor-tabelle .d-strasse, .debitor-tabelle .d-plz { display: none; }
+            .debitor-tabelle tr.debitor-paid-row { background: #f6fff7; }
+            .debitor-tabelle tr.debitor-reminder-row { background: #fff8f0; }
+            .fw-liste-kopf { flex-direction: column; align-items: stretch; }
+            .fw-liste-kopf.offen .filter-inline { display: flex; }
             .collapsible-body { padding: 0 16px 16px; }
             .card-toggle-header { flex-direction: row; align-items: center; padding: 14px 16px; }
             .filter-inline { flex-direction: column; align-items: stretch; width: 100%; gap: 10px; }
             .filter-inline .form-group, .filter-inline select, .filter-inline input { width: 100%; }
             .event-form-actions { flex-direction: column; align-items: stretch; }
             .event-form-actions button { width: 100%; }
-            .fw-summary-dashboard { grid-template-columns: 1fr; }
+            /* Summen kompakt in einer Zeile */
+            .fw-summary-dashboard { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .fw-summary-card { padding: 10px 6px; }
+            .fw-summary-card h4 { font-size: 0.66rem; letter-spacing: 0; margin-bottom: 4px; }
+            .fw-summary-card .value { font-size: 0.95rem; }
             .matrix-filter-btn { min-width: 100%; width: 100%; }
             .matrix-filter-dropdown { min-width: 100%; max-width: 100%; left: 0; right: auto; }
             .modal-content { padding: 18px; }
@@ -198,11 +238,11 @@
     </header>
 
     <nav class="nav-tabs">
-        <button class="tab-btn active" onclick="openTab('verkaeufe', event)">Verkäufe & Events</button>
-        <button class="tab-btn" onclick="openTab('adressen', event)">Adressliste (Kunden)</button>
-        <button class="tab-btn" onclick="openTab('debitoren', event)">Debitoren (Offene Rechnungen)</button>
-        <button class="tab-btn" onclick="openTab('ferienwohnung', event)">Ferienwohnung</button>
-        <button class="tab-btn" onclick="openTab('photographic', event)">Photographic</button>
+        <button class="tab-btn active" onclick="openTab('verkaeufe', event)"><span class="tab-icon" aria-hidden="true">🛍️</span><span class="tab-lang">Verkäufe & Events</span><span class="tab-kurz">Verkäufe</span></button>
+        <button class="tab-btn" onclick="openTab('adressen', event)"><span class="tab-icon" aria-hidden="true">👥</span><span class="tab-lang">Adressliste (Kunden)</span><span class="tab-kurz">Kunden</span></button>
+        <button class="tab-btn" onclick="openTab('debitoren', event)"><span class="tab-icon" aria-hidden="true">🧾</span><span class="tab-lang">Debitoren (Offene Rechnungen)</span><span class="tab-kurz">Debitoren</span></button>
+        <button class="tab-btn" onclick="openTab('ferienwohnung', event)"><span class="tab-icon" aria-hidden="true">🏠</span><span class="tab-lang">Ferienwohnung</span><span class="tab-kurz">FeWo</span></button>
+        <button class="tab-btn" onclick="openTab('photographic', event)"><span class="tab-icon" aria-hidden="true">📷</span><span class="tab-lang">Photographic</span><span class="tab-kurz">Photo</span></button>
     </nav>
 
     <div id="verkaeufe" class="tab-content active">
@@ -231,7 +271,7 @@
                         <tfoot><tr class="eingabe-total"><td>Gesamtumsatz:</td><td class="center" id="totalAnzahlNeu">0</td><td class="right chf" id="totalBetragNeu">0.00</td></tr></tfoot>
                     </table>
                 </div>
-                <div class="event-form-actions">
+                <div class="event-form-actions sticky-actions">
                     <button class="btn-main" id="saveEventBtn" onclick="speichereEvent()">Event speichern</button>
                     <button class="btn-secondary" id="cancelEventBtn" onclick="abbrechenEventBearbeitung()" style="display:none;">Bearbeitung abbrechen</button>
                 </div>
@@ -263,7 +303,7 @@
             <div class="card">
                 <div class="table-card-header"><h2 class="card-title">Markt / Ausstellung <span class="summary-badge" id="marktCountBadge">0 Einträge</span></h2></div>
                 <div class="table-container" style="margin-top: 15px;">
-                    <table>
+                    <table class="karten-tabelle verkauf-tabelle">
                         <thead><tr><th>Datum</th><th>Markt / Ort</th><th>Bemerkungen</th><th class="center">Anzahl</th><th class="right">Umsatz (CHF)</th><th class="center">Aktionen</th></tr></thead>
                         <tbody id="marktListeBody"></tbody>
                     </table>
@@ -272,7 +312,7 @@
             <div class="card">
                 <div class="table-card-header"><h2 class="card-title">Sonstige Verkäufe <span class="summary-badge" id="sonstigeCountBadge">0 Einträge</span></h2></div>
                 <div class="table-container" style="margin-top: 15px;">
-                    <table class="sonstige-table">
+                    <table class="sonstige-table karten-tabelle verkauf-tabelle">
                         <thead><tr><th>Datum</th><th>Beschreibung</th><th class="center">Anzahl</th><th class="right">Umsatz (CHF)</th><th class="center">Aktionen</th></tr></thead>
                         <tbody id="sonstigeListeBody"></tbody>
                     </table>
@@ -297,7 +337,7 @@
                     <div class="form-group col-4"><label>Ort</label><input type="text" id="kundeOrt" placeholder="Ort"></div>
                     <div class="form-group col-8"><label>Produkte / Infofeld</label><textarea id="kundeProdukte" placeholder="Freitext pro Kunde, z.B. Vorlieben, Hinweise oder spezielle Informationen"></textarea></div>
                 </div>
-                <div class="event-form-actions">
+                <div class="event-form-actions sticky-actions">
                     <button class="btn-main" id="saveAdressBtn" onclick="speichereAdresse()">Kunde speichern</button>
                     <button class="btn-secondary" id="cancelAdressBtn" onclick="abbrechenAdresseBearbeitung()" style="display:none;">Bearbeitung abbrechen</button>
                 </div>
@@ -313,7 +353,7 @@
             </div>
             <div class="search-toolbar"><div class="search-input-wrap"><label for="adressSuche">Suche</label><input type="search" id="adressSuche" placeholder="Suche nach Name, Ortschaft oder Produkten"></div></div>
             <div class="table-container">
-                <table>
+                <table class="karten-tabelle adress-tabelle">
                     <thead>
                         <tr>
                             <th class="sortable-header" onclick="sortiereAdressen('vorname')">Vorname <span id="sort_adress_vorname" class="sort-icon"></span></th>
@@ -364,7 +404,7 @@
                         </div>
                     </div>
                     <div class="form-group col-3"><label>Rechnungsdatum</label><input type="date" id="debitorDatum"></div>
-                    <div class="form-group col-3"><label>Betrag (CHF)</label><input type="number" id="debitorBetrag" step="0.01" min="0" placeholder="0.00"></div>
+                    <div class="form-group col-3"><label>Betrag (CHF)</label><input type="text" inputmode="decimal" autocomplete="off" id="debitorBetrag" placeholder="0.00"></div>
                     <div class="form-group col-3"><label>Vorname</label><input type="text" id="debitorVorname" placeholder="Vorname"></div>
                     <div class="form-group col-3"><label>Name</label><input type="text" id="debitorNachname" placeholder="Nachname"></div>
                     <div class="form-group col-4"><label>Strasse</label><input type="text" id="debitorStrasse" placeholder="Strasse und Nr."></div>
@@ -377,7 +417,7 @@
                     <div class="form-group col-5"><label>Mahnung / Bemerkungen</label><input type="text" id="debitorMahnung" placeholder="z.B. 1. Mahnung gesendet"></div>
                     <div class="form-group col-12"><label>Produkte</label><textarea id="debitorProdukte" placeholder="Freitext zur Bestellung / Produkte"></textarea></div>
                 </div>
-                <div class="event-form-actions">
+                <div class="event-form-actions sticky-actions">
                     <button class="btn-main" id="saveDebitorBtn" onclick="speichereDebitor()">Debitor speichern</button>
                     <button class="btn-secondary" id="clearDebitorKundeBtn" onclick="debitorKundeAuswahlZuruecksetzen()">Alle Felder leeren</button>
                     <button class="btn-secondary" id="cancelDebitorBtn" onclick="abbrechenDebitorBearbeitung()" style="display:none;">Bearbeitung abbrechen</button>
@@ -396,7 +436,7 @@
                 </div>
             </div>
             <div class="table-container">
-                <table>
+                <table class="karten-tabelle debitor-tabelle">
                     <thead>
                         <tr>
                             <th class="sortable-header" onclick="sortiereDebitoren('nummer')">Nummer <span id="sort_debitor_nummer" class="sort-icon"></span></th>
@@ -443,16 +483,16 @@
                     <div class="form-group col-2"><label>E-Mail Adresse</label><input type="email" id="fwEmail" placeholder="name@example.com" autocomplete="email"></div>
                     <div class="form-group col-2"><label>Telefonnummer</label><input type="tel" id="fwTelefon" placeholder="+41 79 000 00 00" autocomplete="tel"></div>
 
-                    <div class="form-group col-3"><label>Erwachsene</label><input type="number" id="fwErwachsene" min="0" value="1"></div>
-                    <div class="form-group col-3"><label>Kinder</label><input type="number" id="fwKinder" min="0" value="0"></div>
+                    <div class="form-group col-3"><label>Erwachsene</label><input type="number" inputmode="numeric" id="fwErwachsene" min="0" value="1"></div>
+                    <div class="form-group col-3"><label>Kinder</label><input type="number" inputmode="numeric" id="fwKinder" min="0" value="0"></div>
                     <div class="form-group col-3"><label>Anbieter / Plattform</label><input type="text" id="fwAnbieter" placeholder="z.B. Airbnb, Booking"></div>
                     <div class="form-group col-3"><label>Buchungsdatum</label><input type="date" id="fwBuchungsdatum"></div>
 
-                    <div class="form-group col-2"><label>Reinigung (CHF)</label><input type="number" id="fwReinigung" step="0.05" min="0" placeholder="0.00"></div>
-                    <div class="form-group col-2"><label>Kurtaxe (CHF)</label><input type="number" id="fwKurtaxe" step="0.05" min="0" placeholder="0.00"></div>
-                    <div class="form-group col-2"><label>Preis gesamt (CHF)</label><input type="number" id="fwPreis" step="0.05" min="0" placeholder="0.00"></div>
-                    <div class="form-group col-2"><label>Nettoeinnahmen (CHF)</label><input type="number" id="fwNetto" step="0.05" min="0" placeholder="0.00"></div>
-                    <div class="form-group col-2"><label>Anzahlung (CHF)</label><input type="number" id="fwAnzahlung" step="0.05" min="0" placeholder="0.00"></div>
+                    <div class="form-group col-2"><label>Reinigung (CHF)</label><input type="text" inputmode="decimal" autocomplete="off" id="fwReinigung" placeholder="0.00"></div>
+                    <div class="form-group col-2"><label>Kurtaxe (CHF)</label><input type="text" inputmode="decimal" autocomplete="off" id="fwKurtaxe" placeholder="0.00"></div>
+                    <div class="form-group col-2"><label>Preis gesamt (CHF)</label><input type="text" inputmode="decimal" autocomplete="off" id="fwPreis" placeholder="0.00"></div>
+                    <div class="form-group col-2"><label>Nettoeinnahmen (CHF)</label><input type="text" inputmode="decimal" autocomplete="off" id="fwNetto" placeholder="0.00"></div>
+                    <div class="form-group col-2"><label>Anzahlung (CHF)</label><input type="text" inputmode="decimal" autocomplete="off" id="fwAnzahlung" placeholder="0.00"></div>
                     <div class="form-group col-2">
                         <label>Bezahlt?</label>
                         <select id="fwBezahlt"><option value="Nein">Nein</option><option value="Ja">Ja</option></select>
@@ -461,7 +501,7 @@
                     <div class="form-group col-12"><label>Bemerkungen</label><textarea id="fwBemerkungen" placeholder="Spezielle Wünsche, Check-in Zeiten etc." rows="2" style="min-height: 64px;"></textarea></div>
                 </div>
 
-                <div class="event-form-actions">
+                <div class="event-form-actions sticky-actions">
                     <button class="btn-main" id="saveFwBtn" onclick="speichereFwBuchung()">Buchung speichern</button>
                     <button class="btn-secondary" id="cancelFwBtn" onclick="abbrechenFwBearbeitung()" style="display:none;">Bearbeitung abbrechen</button>
                 </div>
@@ -485,9 +525,12 @@
         <div class="fw-summary-hint" id="fwSummaryHint"></div>
 
         <div>
-            <div class="card table-card-header fw-liste-kopf">
+            <div class="card table-card-header fw-liste-kopf mobil-klappbar">
                 <h2 class="card-title">Buchungen <span class="summary-badge" id="fwCountBadge">0 Buchungen</span></h2>
-                <div class="filter-inline">
+                <button type="button" class="btn btn-outline filter-toggle" onclick="this.parentElement.classList.toggle('offen')">
+                    <span>Filter & Export</span><span class="pfeil" aria-hidden="true">▾</span>
+                </button>
+                <div class="filter-inline klapp-inhalt">
                     <div class="form-group">
                         <label>Objekt Filter</label>
                         <select id="fwFilterObjekt" onchange="renderFwListe()"></select>
@@ -660,7 +703,7 @@
     <script type="module">
         import { auth, onAuthStateChanged, signOut } from "./js/firebase.js";
         import { db, collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, query, where } from "./js/firestore.js";
-        import { escapeHtml, formatCHF, formatDatumCH, todayLocal, textVergleich, verzoegert } from "./js/utils.js";
+        import { escapeHtml, formatCHF, formatDatumCH, todayLocal, textVergleich, verzoegert, parseRappen } from "./js/utils.js";
         import { produkte, unterobjekte, initJahresAuswahl } from "./js/config.js";
         import { toast, bestaetigen } from "./js/ui.js";
 
@@ -1017,8 +1060,8 @@
             tbody.innerHTML = produkte.map((produkt, index) => `
                     <tr>
                         <td>${produkt}</td>
-                        <td class="center"><input type="number" class="tbl-input anzahl-input" data-idx="${index}" step="1"></td>
-                        <td class="right"><input type="number" class="tbl-input betrag-input" data-idx="${index}" step="0.01"></td>
+                        <td class="center"><input type="number" inputmode="numeric" class="tbl-input anzahl-input" data-idx="${index}" step="1" aria-label="Anzahl ${produkt}"></td>
+                        <td class="right"><input type="text" inputmode="decimal" autocomplete="off" class="tbl-input betrag-input" data-idx="${index}" aria-label="Betrag ${produkt}"></td>
                     </tr>
                 `).join('');
             document.querySelectorAll('.anzahl-input, .betrag-input').forEach(input => input.addEventListener('input', berechneEingabeTotal));
@@ -1063,9 +1106,9 @@
             let totalAnzahl = 0;
             let totalBetrag = 0;
             document.querySelectorAll('.anzahl-input').forEach(el => { if (el.value) totalAnzahl += parseInt(el.value, 10) || 0; });
-            document.querySelectorAll('.betrag-input').forEach(el => { if (el.value) totalBetrag += parseFloat(el.value) || 0; });
+            document.querySelectorAll('.betrag-input').forEach(el => { const r = parseRappen(el.value); if (Number.isFinite(r)) totalBetrag += r; });
             document.getElementById('totalAnzahlNeu').innerText = totalAnzahl;
-            document.getElementById('totalBetragNeu').innerText = formatCHF(Math.round(totalBetrag * 100));
+            document.getElementById('totalBetragNeu').innerText = formatCHF(totalBetrag);
         }
 
         // =========================================================================
@@ -1253,9 +1296,11 @@
             const betragInputs = document.querySelectorAll('.betrag-input');
             for (let i = 0; i < produkte.length; i += 1) {
                 const anzahl = parseInt(anzahlInputs[i].value, 10) || 0;
-                const betrag = parseFloat(betragInputs[i].value) || 0;
-                if (anzahl !== 0 || betrag !== 0) {
-                    eventProdukte.push({ name: produkte[i], anzahl, betrag_rappen: Math.round(betrag * 100) });
+                const betragText = betragInputs[i].value.trim();
+                const betragRappen = betragText ? parseRappen(betragText) : 0;
+                if (!Number.isFinite(betragRappen)) return showToast(`Ungültiger Betrag bei "${produkte[i]}": ${betragText}`, 'warning');
+                if (anzahl !== 0 || betragRappen !== 0) {
+                    eventProdukte.push({ name: produkte[i], anzahl, betrag_rappen: betragRappen });
                 }
             }
             if (eventProdukte.length === 0) return showToast('Bitte trage mindestens bei einem Produkt einen Wert ein.', 'warning');
@@ -1298,12 +1343,12 @@
                 `).join('');
                 return `
                     <tr>
-                        <td>${formatDatumCH(event.datum)}</td>
-                        <td class="${isSonstige ? 'td-truncate mw-120' : ''}" title="${escapeHtml(event.event_name || '')}">${escapeHtml(event.event_name || '')}</td>
-                        ${isSonstige ? '' : `<td>${escapeHtml(event.ort || '')}</td>`}
-                        <td class="center">${totals.anzahl}</td>
-                        <td class="right chf">${formatCHF(totals.betrag)}</td>
-                        <td class="center">
+                        <td class="v-datum">${formatDatumCH(event.datum)}</td>
+                        <td class="v-name ${isSonstige ? 'td-truncate mw-120' : ''}" title="${escapeHtml(event.event_name || '')}">${escapeHtml(event.event_name || '')}</td>
+                        ${isSonstige ? '' : `<td class="v-ort">${escapeHtml(event.ort || '')}</td>`}
+                        <td class="center v-anzahl" data-label="Stück">${totals.anzahl}</td>
+                        <td class="right chf v-betrag">${formatCHF(totals.betrag)}</td>
+                        <td class="center v-aktion">
                             <div class="row-actions">
                                 <button class="btn-icon" title="Details ein/ausblenden" onclick="toggleEventDetails('${event.id}')">📜</button>
                                 <button class="btn-icon" title="Bearbeiten" onclick="bearbeiteEvent('${event.id}')">✏️</button>
@@ -1526,16 +1571,16 @@
                 const historySummary = getHistorySummaryForAdresse(adresse);
                 return `
                     <tr id="adressRow_${adresse.id}">
-                        <td>${escapeHtml(adresse.vorname || '')}</td>
-                        <td>${escapeHtml(adresse.nachname || '')}</td>
-                        <td>${escapeHtml(adresse.strasse || '')}</td>
-                        <td>${escapeHtml(adresse.plz || '')}</td>
-                        <td>${escapeHtml(adresse.ort || '')}</td>
-                        <td class="adress-produkte-cell">
+                        <td class="a-vorname">${escapeHtml(adresse.vorname || '')}</td>
+                        <td class="a-nachname">${escapeHtml(adresse.nachname || '')}</td>
+                        <td class="a-strasse">${escapeHtml(adresse.strasse || '')}</td>
+                        <td class="a-plz">${escapeHtml(adresse.plz || '')}</td>
+                        <td class="a-ort">${escapeHtml(adresse.ort || '')}</td>
+                        <td class="adress-produkte-cell a-produkte">
                             <div>${escapeHtml(adresse.produkte || '').replace(/\n/g, '<br>') || '<span class="muted">—</span>'}</div>
                             ${historySummary ? `<div class="adress-meta">${historySummary}</div>` : ''}
                         </td>
-                        <td class="center">
+                        <td class="center a-aktion">
                             <div class="row-actions">
                                 <button class="btn-icon" title="Historie anzeigen" onclick="toggleAdressHistory('${adresse.id}')">📜</button>
                                 <button class="btn-icon" title="Bearbeiten" onclick="bearbeiteAdresse('${adresse.id}')">✏️</button>
@@ -1941,10 +1986,14 @@
             const rechnungsdatum = document.getElementById('debitorDatum').value;
             const nummer = document.getElementById('debitorNummer').value.trim();
             const nachname = document.getElementById('debitorNachname').value.trim();
-            const betrag = parseFloat(document.getElementById('debitorBetrag').value || '0');
+            const betragText = document.getElementById('debitorBetrag').value.trim();
+            const betragRappen = betragText ? parseRappen(betragText) : 0;
             const vorname = document.getElementById('debitorVorname').value.trim();
             const online = getSelectedDebitorOnlineValues();
-            if (!nummer && !rechnungsdatum && !nachname && !vorname && betrag <= 0) {
+            if (!Number.isFinite(betragRappen) || betragRappen < 0) {
+                return showToast('Bitte einen gültigen Betrag eingeben (z.B. 45.50 oder 45,50).', 'warning');
+            }
+            if (!nummer && !rechnungsdatum && !nachname && !vorname && betragRappen <= 0) {
                 return showToast('Bitte mindestens ein Kernfeld erfassen (z.B. Nummer, Datum, Name oder Betrag).', 'warning');
             }
 
@@ -1953,7 +2002,7 @@
                 nummer, online, rechnungsdatum,
                 vorname: document.getElementById('debitorVorname').value.trim(), nachname,
                 strasse: document.getElementById('debitorStrasse').value.trim(), plz: document.getElementById('debitorPlz').value.trim(), ort: document.getElementById('debitorOrt').value.trim(),
-                produkte: document.getElementById('debitorProdukte').value.trim(), betrag_rappen: Math.round(betrag * 100),
+                produkte: document.getElementById('debitorProdukte').value.trim(), betrag_rappen: betragRappen,
                 bezahlt_status: document.getElementById('debitorBezahlt').value, mahnung: document.getElementById('debitorMahnung').value.trim(), aktualisiert_am: serverTimestamp()
             };
 
@@ -2046,19 +2095,19 @@
                 const rowClass = isDebitorBezahlt(debitor) ? 'debitor-paid-row' : (debitor.mahnung ? 'debitor-reminder-row' : '');
                 return `
                     <tr class="${rowClass}">
-                        <td>${escapeHtml(debitor.nummer || '')}</td>
-                        <td>${escapeHtml(onlineText)}</td>
-                        <td>${formatDatumCH(debitor.rechnungsdatum)}</td>
-                        <td class="td-truncate mw-100" title="${escapeHtml(debitor.vorname || '')}">${escapeHtml(debitor.vorname || '')}</td>
-                        <td class="td-truncate mw-120" title="${escapeHtml(debitor.nachname || '')}">${escapeHtml(debitor.nachname || '')}</td>
-                        <td class="td-truncate mw-120" title="${escapeHtml(debitor.strasse || '')}">${escapeHtml(debitor.strasse || '')}</td>
-                        <td>${escapeHtml(debitor.plz || '')}</td>
-                        <td class="td-truncate mw-100" title="${escapeHtml(debitor.ort || '')}">${escapeHtml(debitor.ort || '')}</td>
-                        <td class="td-truncate mw-150" title="${escapeHtml(debitor.produkte || '')}">${escapeHtml(debitor.produkte || '').replace(/\n/g, ' / ')}</td>
-                        <td class="right chf">${formatCHF(debitor.betrag_rappen || 0)}</td>
-                        <td><span class="status-chip ${getBezahltChipClass(bezahltStatus)}">${escapeHtml(bezahltStatus)}</span></td>
-                        <td class="td-truncate mw-120" title="${escapeHtml(debitor.mahnung || '')}">${escapeHtml(debitor.mahnung || '')}</td>
-                        <td class="center">
+                        <td class="d-nummer">${escapeHtml(debitor.nummer || '')}</td>
+                        <td class="d-online">${escapeHtml(onlineText)}</td>
+                        <td class="d-datum">${formatDatumCH(debitor.rechnungsdatum)}</td>
+                        <td class="td-truncate mw-100 d-vorname" title="${escapeHtml(debitor.vorname || '')}">${escapeHtml(debitor.vorname || '')}</td>
+                        <td class="td-truncate mw-120 d-name" title="${escapeHtml(debitor.nachname || '')}">${escapeHtml(debitor.nachname || '')}</td>
+                        <td class="td-truncate mw-120 d-strasse" title="${escapeHtml(debitor.strasse || '')}">${escapeHtml(debitor.strasse || '')}</td>
+                        <td class="d-plz">${escapeHtml(debitor.plz || '')}</td>
+                        <td class="td-truncate mw-100 d-ort" title="${escapeHtml(debitor.ort || '')}">${escapeHtml(debitor.ort || '')}</td>
+                        <td class="td-truncate mw-150 d-produkte" title="${escapeHtml(debitor.produkte || '')}">${escapeHtml(debitor.produkte || '').replace(/\n/g, ' / ')}</td>
+                        <td class="right chf d-betrag">${formatCHF(debitor.betrag_rappen || 0)}</td>
+                        <td class="d-bezahlt"><span class="status-chip ${getBezahltChipClass(bezahltStatus)}">${escapeHtml(bezahltStatus)}</span></td>
+                        <td class="td-truncate mw-120 d-mahnung" title="${escapeHtml(debitor.mahnung || '')}">${escapeHtml(debitor.mahnung || '')}</td>
+                        <td class="center d-aktion">
                             <div class="row-actions">
                                 <button class="btn-icon" title="Bearbeiten" onclick="bearbeiteDebitor('${debitor.id}')">✏️</button>
                                 <button class="btn-icon danger" title="Löschen" onclick="loescheDebitor('${debitor.id}')">🗑️</button>
@@ -2589,6 +2638,15 @@
                 return showToast('"Datum bis" darf nicht vor "Datum von" liegen.', 'warning');
             }
 
+            // Beträge: leer = 0, sonst gültige positive Zahl (Punkt oder Komma)
+            const betraege = {};
+            for (const [feld, id, name] of [['reinigung_rappen', 'fwReinigung', 'Reinigung'], ['kurtaxe_rappen', 'fwKurtaxe', 'Kurtaxe'], ['preis_rappen', 'fwPreis', 'Preis gesamt'], ['netto_rappen', 'fwNetto', 'Nettoeinnahmen'], ['anzahlung_rappen', 'fwAnzahlung', 'Anzahlung']]) {
+                const text = document.getElementById(id).value.trim();
+                const rappen = text ? parseRappen(text) : 0;
+                if (!Number.isFinite(rappen) || rappen < 0) return showToast(`Ungültiger Betrag bei "${name}": ${text}`, 'warning');
+                betraege[feld] = rappen;
+            }
+
             const payload = {
                 objekt: document.getElementById('fwObjekt').value,
                 datum_von, datum_bis, name,
@@ -2600,11 +2658,7 @@
                 kinder: parseInt(document.getElementById('fwKinder').value) || 0,
                 anbieter: document.getElementById('fwAnbieter').value.trim(),
                 buchungsdatum: document.getElementById('fwBuchungsdatum').value,
-                reinigung_rappen: Math.round((parseFloat(document.getElementById('fwReinigung').value) || 0) * 100),
-                kurtaxe_rappen: Math.round((parseFloat(document.getElementById('fwKurtaxe').value) || 0) * 100),
-                preis_rappen: Math.round((parseFloat(document.getElementById('fwPreis').value) || 0) * 100),
-                netto_rappen: Math.round((parseFloat(document.getElementById('fwNetto').value) || 0) * 100),
-                anzahlung_rappen: Math.round((parseFloat(document.getElementById('fwAnzahlung').value) || 0) * 100),
+                ...betraege,
                 bezahlt: document.getElementById('fwBezahlt').value,
                 bemerkungen: document.getElementById('fwBemerkungen').value.trim()
             };
