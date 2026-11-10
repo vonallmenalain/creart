@@ -19,7 +19,9 @@
         /* Nur Regeln für die Verwaltung; Grundlagen in css/styles.css */
 
         /* Aufklappbare Formular-Karten */
-        .collapsible-card { padding: 0; overflow: hidden; }
+        /* Kein overflow: hidden – sonst klebt die Speichern-Leiste (.sticky-actions)
+           an der Karte statt am Bildschirm und verdeckt auf dem Handy das letzte Feld. */
+        .collapsible-card { padding: 0; }
         .card-toggle-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 24px; cursor: pointer; }
         .card-toggle-header h2 { margin: 0; }
         .collapsible-body { border-top: 1px solid var(--line); padding: 0 24px 24px; }
