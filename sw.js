@@ -5,7 +5,7 @@
 // - Firebase- und Excel-Bibliothek: Adressen enthalten die Version und ändern sich nie,
 //   deshalb dauerhaft aus dem Cache.
 // - Datenbank- und Login-Anfragen werden nicht angefasst (Firestore hat einen eigenen Cache).
-const APP_CACHE = 'creart-app-v3';
+const APP_CACHE = 'creart-app-v4';
 const LIB_CACHE = 'creart-lib-v1';
 const NETZ_TIMEOUT_MS = 3500;
 const APP_DATEIEN = [

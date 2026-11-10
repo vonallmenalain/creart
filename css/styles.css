@@ -219,6 +219,8 @@ th.center, td.center { text-align: center; }
 /* ---------- Handy ---------- */
 @media (max-width: 768px) {
     :root { --tabbar-h: 64px; }
+    /* Angetippte Felder nicht hinter Tab-Leiste und Speichern-Leiste scrollen */
+    html { scroll-padding-bottom: calc(var(--tabbar-h) + 140px + env(safe-area-inset-bottom)); }
     body { padding: 12px 12px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom)); }
     .card { padding: 16px; }
     .app-header { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 14px; }
